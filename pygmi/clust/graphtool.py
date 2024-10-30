@@ -188,8 +188,8 @@ class GraphHist(FigureCanvasQTAgg):
         self.ycoord = self.data[self.cindx[1]].data.flatten()
         self.xcoord -= self.xcoord.min()
         self.ycoord -= self.ycoord.min()
-        xptp = self.xcoord.ptp()
-        yptp = self.ycoord.ptp()
+        xptp = np.ptp(self.xcoord)
+        yptp = np.ptp(self.ycoord)
         xstep = xptp / 50
         ystep = yptp / 50
         self.xcoord = self.xcoord/xstep

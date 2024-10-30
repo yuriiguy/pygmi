@@ -308,7 +308,7 @@ class MextDisplay(QtWidgets.QDialog):
             curgrid = self.parent.inraster[ctxt]
 
             self.dsb_utlz.setValue(curgrid.data.max())
-            zextent = curgrid.data.ptp()+self.dsb_zcell.value()
+            zextent = np.ptp(curgrid.data)+self.dsb_zcell.value()
             if zextent > self.dsb_zextent.value():
                 self.dsb_zextent.setValue(zextent)
 

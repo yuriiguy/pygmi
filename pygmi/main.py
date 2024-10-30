@@ -923,7 +923,7 @@ class MainWidget(QtWidgets.QMainWindow):
 
         # Actual polygon item
         text_width = text_item.boundingRect().width()
-        item.np_poly *= 1.5*text_width/item.np_poly[:, 0].ptp()
+        item.np_poly *= 1.5*text_width/np.ptp(item.np_poly[:, 0])
         item.np_poly[:, 0] += (text_item.boundingRect().left() -
                                item.np_poly[:, 0].min() - text_width/4)
         item.np_poly[:, 1] += text_item.boundingRect().height()/2

@@ -701,9 +701,9 @@ class Mod3dDisplay(ContextModule):
 
         vtx[:, -1] = (vtx[:, -1]-self.origin[-1])*self.zmult + self.origin[-1]
 
-        cptp = vtx.ptp(0).max()/100.
+        cptp = np.ptp(vtx, 0).max()/100.
         cmin = vtx.min(0)
-        cptpd2 = vtx.ptp(0)/2.
+        cptpd2 = np.ptp(vtx, 0)/2.
         vtx = (vtx-cmin-cptpd2)/cptp
 
         vadd = cmin+cptpd2
@@ -2095,9 +2095,9 @@ def _testfn():
 # To render without the index list, we create a flattened array where
 # the triangle indices are replaced with the actual vertices.
 
-    cptp = vtx.ptp(0).max()/100
+    cptp = np.ptp(vtx, 0).max()/100
     cmin = vtx.min(0)
-    cptpd2 = vtx.ptp(0)/2.
+    cptpd2 = np.ptp(vtx, 0)/2.
     vtx = (vtx-cmin-cptpd2)/cptp
 
     wid.glwidget.hastriangles = True

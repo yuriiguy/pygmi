@@ -737,7 +737,7 @@ class ExportMod3D(ContextModule):
         tilt = str(45.)  # angle from vertical
         lat = str(np.mean([latsouth, latnorth]))  # coord of object
         lon = str(np.mean([lonwest, loneast]))  # coord of object
-        rng = str(max(xrng.ptp(), yrng.ptp(), zrng.ptp()))  # range to object
+        rng = str(max(np.ptp(xrng), np.ptp(yrng), np.ptp(zrng)))  # range to object
         alt = str(0)  # alt of object eye is looking at (meters)
         lato = str(latsouth)
         lono = str(lonwest)
@@ -789,7 +789,7 @@ class ExportMod3D(ContextModule):
             points[:, 2] -= z
 
             if rev == -1:
-                points += [xrng.ptp(), yrng.ptp(), 0]
+                points += [np.ptp(xrng), np.ptp(yrng), 0]
 
             norm = np.abs(mvis_3d.gnorms[lith])
             clrtmp = np.array(self.lmod.mlut[lith])/255.

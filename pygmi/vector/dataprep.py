@@ -202,8 +202,8 @@ class DataGrid(BasicModule):
         x = data.geometry.x.values
         y = data.geometry.y.values
 
-        cols = round(x.ptp()/self.dxy)
-        rows = round(y.ptp()/self.dxy)
+        cols = round(np.ptp(x)/self.dxy)
+        rows = round(np.ptp(y)/self.dxy)
 
         self.lbl_rows.setText('Rows: '+str(rows))
         self.lbl_cols.setText('Columns: '+str(cols))
@@ -268,10 +268,10 @@ class DataGrid(BasicModule):
             x = data.geometry.x.values
             y = data.geometry.y.values
 
-            dx = x.ptp()/np.sqrt(x.size)
-            dy = y.ptp()/np.sqrt(y.size)
+            dx = np.ptp(x)/np.sqrt(x.size)
+            dy = np.ptp(y)/np.sqrt(y.size)
             self.dxy = max(dx, dy)
-            self.dxy = min([x.ptp(), y.ptp(), self.dxy])
+            self.dxy = min([np.ptp(x), np.ptp(y), self.dxy])
 
         self.le_dxy.setText(f'{self.dxy:.8f}')
         self.dxy_change()

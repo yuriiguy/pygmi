@@ -283,7 +283,7 @@ class Smooth(BasicModule):
         green = list(range(0, 256, 3)) + 85*[255] + list(range(255, 0, -3))
         blue = [255]*85 + list(range(255, 0, -3)) + [0]*86
         fmin = self.fmat.min()
-        frange = self.fmat.ptp()
+        frange = np.ptp(self.fmat)
 
         self.tablewidget.clear()
         self.tablewidget.setRowCount(self.fmat.shape[0])

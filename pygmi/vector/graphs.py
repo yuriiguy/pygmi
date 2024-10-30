@@ -477,10 +477,10 @@ class MyMplCanvas(FigureCanvasQTAgg):
             ang = np.arctan2((y[1:]-y[:-1]), (x[1:]-x[:-1]))
             ang = np.append(ang, ang[-1])
 
-            if x.ptp() > y.ptp() and (x[-1]-x[0]) < 0:
+            if np.ptp(x) > np.ptp(y) and (x[-1]-x[0]) < 0:
                 ang += np.pi
 
-            elif y.ptp() > x.ptp() and (y[-1]-y[0]) < 0:
+            elif np.ptp(y) > np.ptp(x) and (y[-1]-y[0]) < 0:
                 ang += np.pi
 
             py = spcing*scale*(z - med)/std/100.

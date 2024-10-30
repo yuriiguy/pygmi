@@ -36,6 +36,8 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 from matplotlib.backends.backend_qt5 import NavigationToolbar2QT
 import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
+from scipy.spatial import ConvexHull
+from scipy.interpolate import interp1d
 
 from pygmi.misc import frm, BasicModule
 from pygmi import menu_default
@@ -1157,14 +1159,59 @@ def cubic_calc(xdat, crem, imin):
     return x, y
 
 
-@jit(nopython=True)
-def phull(sample1):
+# @jit(nopython=True)
+# def phull(sample1):
+#     """
+#     Hull Calculation.
+
+#     Parameters
+#     ----------
+#     sample1 : numpy array
+#         Sample to create a hull for.
+
+#     Returns
+#     -------
+#     out : numpy array
+#         Output hull.
+
+#     """
+#     xvals = np.arange(sample1.size, dtype=np.int64)
+#     sample = np.empty((sample1.size, 2))
+#     sample[:, 0] = xvals
+#     sample[:, 1] = sample1
+
+#     edge = sample[:1].copy()
+#     rest = sample[1:]
+
+#     hull = [0]
+#     while len(rest) > 0:
+#         grad = rest - edge
+#         grad = grad[:, 1]/grad[:, 0]
+#         pivot = np.argmax(grad)
+#         edge[0, 0] = rest[pivot, 0]
+#         edge[0, 1] = rest[pivot, 1]
+#         rest = rest[pivot+1:]
+#         hull.append(pivot)
+
+#     hull = np.array(hull) + 1
+#     hull = hull.cumsum()-1
+
+#     take = np.take(sample[:, 1], hull)
+
+#     out = np.interp(xvals, hull, take)
+
+#     return out
+
+
+def phull(y):
     """
-    Hull Calculation.
+    Calculate Continuum/hull.
+
+    Based on: https://stackoverflow.com/questions/73382974/how-to-apply-continuum-removal-in-spectral-graph
 
     Parameters
     ----------
-    sample1 : numpy array
+    y : numpy array
         Sample to create a hull for.
 
     Returns
@@ -1173,33 +1220,19 @@ def phull(sample1):
         Output hull.
 
     """
-    xvals = np.arange(sample1.size, dtype=np.int64)
-    sample = np.empty((sample1.size, 2))
-    sample[:, 0] = xvals
-    sample[:, 1] = sample1
+    x = np.arange(y.size, dtype=np.int64)
+    points = np.transpose([x, y])
 
-    edge = sample[:1].copy()
-    rest = sample[1:]
+    augmented = np.concatenate([points, [(x[0], np.min(y)-1),
+                                         (x[-1], np.min(y)-1)]], axis=0)
+    hull = ConvexHull(augmented)
+    continuum_points = points[np.sort([v for v in hull.vertices
+                                       if v < len(points)])]
+    continuum_function = interp1d(*continuum_points.T)
 
-    hull = [0]
-    while len(rest) > 0:
-        grad = rest - edge
-        grad = grad[:, 1]/grad[:, 0]
-        pivot = np.argmax(grad)
-        edge[0, 0] = rest[pivot, 0]
-        edge[0, 1] = rest[pivot, 1]
-        rest = rest[pivot+1:]
-        hull.append(pivot)
-
-    hull = np.array(hull) + 1
-    hull = hull.cumsum()-1
-
-    take = np.take(sample[:, 1], hull)
-
-    out = np.interp(xvals, hull, take)
+    out = continuum_function(x)
 
     return out
-
 
 def readsli(ifile):
     """
