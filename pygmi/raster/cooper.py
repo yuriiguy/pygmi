@@ -570,8 +570,6 @@ def visibilitytot(data, wsize, dh):
         window size, must be odd
     dh : float
         height of observer above surface
-    piter : function, optional
-        Progress bar iterable. The default is iter.
 
     Returns
     -------

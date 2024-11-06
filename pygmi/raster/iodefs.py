@@ -457,7 +457,7 @@ def get_ascii(ifile):
 
 
 def get_raster(ifile, nval=None, piter=None, showlog=print,
-               iraster=None, driver=None, bounds=None, dataid=None,
+               iraster=None, driver=None, bounds=None,
                tnames=None, metaonly=False, out_shape=None):
     """
     Get raster dataset.
@@ -480,6 +480,14 @@ def get_raster(ifile, nval=None, piter=None, showlog=print,
         (xoff, yoff, xsize, ysize)
     driver : str
         GDAL raster driver name. The default is None.
+    bounds : tuple
+        Bounds of data to import as (left, bottom, right, top)
+    tnames : list, optional
+        list of band names to import, in order. The default is None.
+    metaonly : bool, optional
+        Retrieve only the metadata for the file. The default is False.
+    out_shape : tuple, optional
+        Tuple describing the output array's shape.
 
     Returns
     -------
@@ -645,7 +653,7 @@ def get_raster(ifile, nval=None, piter=None, showlog=print,
     isbil = False
     datin = None
     if ('INTERLEAVE' in istruct and driver in ['ENVI', 'ERS', 'EHdr'] and
-            dataid is None and metaonly is False):
+            tnames is None and metaonly is False):
         interleave = istruct['INTERLEAVE']
         if interleave in ['LINE', 'PIXEL']:
             isbil = True
@@ -672,9 +680,6 @@ def get_raster(ifile, nval=None, piter=None, showlog=print,
 
             if bandid == '' or bandid is None:
                 bandid = 'Band '+str(index)+' '+bname
-
-            if dataid is not None and bandid != dataid:
-                continue
 
             if tnames is not None and bandid not in tnames:
                 continue

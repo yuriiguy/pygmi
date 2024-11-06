@@ -47,7 +47,7 @@ from pyproj.crs import CRS
 
 from pygmi import menu_default
 from pygmi.misc import ProgressBarText, ContextModule, BasicModule
-from pygmi.raster.datatypes import Data, RasterMeta
+from pygmi.raster.datatypes import Data, RasterMeta, bounds_intersection
 from pygmi.raster.iodefs import get_raster, export_raster
 from pygmi.raster.misc import histcomp, norm255, norm2, currentshader
 from pygmi.raster.misc import lstack
@@ -1420,7 +1420,7 @@ def export_batch(indata, odir, filt, tnames=None, piter=None,
 
 
 def get_data(ifile, piter=None, showlog=print, tnames=None,
-             metaonly=False):
+             metaonly=False, bounds=None):
     """
     Load a raster dataset off the disk using the rasterio libraries.
 
@@ -1438,6 +1438,8 @@ def get_data(ifile, piter=None, showlog=print, tnames=None,
         list of band names to import, in order. The default is None.
     metaonly : bool, optional
         Retrieve only the metadata for the file. The default is False.
+    bounds : tuple
+        Bounds of data to import as (left, bottom, right, top)
 
     Returns
     -------
@@ -1475,24 +1477,14 @@ def get_data(ifile, piter=None, showlog=print, tnames=None,
                 dat += tmp
             if dat == []:
                 dat = None
-    # if 'AST_' in bfile:
-    #     idir = os.path.dirname(ifile)
-    #     adate = os.path.basename(ifile).split('_')[2]
-    #     ifiles = glob.glob(os.path.join(idir, '*'+adate+'*.hdf'))
-    #     dat = []
-    #     for afile in ifiles:
-    #         dat += get_aster_hdf(afile, piter, showlog, tnames, metaonly)
-
-    #     ifiles = glob.glob(os.path.join(idir, '*'+adate+'*.zip'))
-    #     for afile in ifiles:
-    #         dat += get_aster_zip(afile, piter, showlog, tnames, metaonly)
     elif (bfile[:4] in ['LT04', 'LT05', 'LE07', 'LC08', 'LM05', 'LC09'] and
           ('.tar' in bfile.lower() or '_MTL.txt' in bfile)):
         dat = get_landsat(ifile, piter, showlog, tnames, metaonly)
     elif ((ext == '.xml' and '.SAFE' in ifile) or
           ('S2A_' in bfile and ext == '.zip') or
-          ('S2B_' in bfile and ext == '.zip')):
-        dat = get_sentinel2(ifile, piter, showlog, tnames, metaonly)
+          ('S2B_' in bfile and ext == '.zip') or
+          (ext == '.safe')):
+        dat = get_sentinel2(ifile, piter, showlog, tnames, metaonly, bounds)
     elif (ext == '.xml' and 'DIM' in ifile):
         dat = get_spot(ifile, piter, showlog, tnames, metaonly)
     elif (('MOD' in bfile or 'MCD' in bfile) and ext == '.hdf' and
@@ -1508,7 +1500,7 @@ def get_data(ifile, piter=None, showlog=print, tnames=None,
         dat = get_emit(ifile, piter, showlog, tnames, metaonly)
     else:
         dat = get_raster(ifile, piter=piter, showlog=showlog,
-                         tnames=tnames, metaonly=metaonly)
+                         tnames=tnames, metaonly=metaonly, bounds=bounds)
 
     if dat is not None:
         for i in dat:
@@ -1524,7 +1516,8 @@ def get_data(ifile, piter=None, showlog=print, tnames=None,
     return dat
 
 
-def get_from_rastermeta(ldata, piter=None, showlog=print, tnames=None):
+def get_from_rastermeta(ldata, piter=None, showlog=print, tnames=None,
+                        metaonly=False, bounds=None):
     """
     Import data from a RasterMeta item.
 
@@ -1538,6 +1531,8 @@ def get_from_rastermeta(ldata, piter=None, showlog=print, tnames=None):
         Routine to show text messages. The default is print.
     tnames : list, optional
         list of band names to import, in order. The default is None.
+    metaonly : bool, optional
+        Retrieve only the metadata for the files. The default is False.
 
     Returns
     -------
@@ -1549,7 +1544,8 @@ def get_from_rastermeta(ldata, piter=None, showlog=print, tnames=None):
         tnames = ldata.tnames
 
     ifile = ldata.banddata[0].filename
-    dat = get_data(ifile, piter=piter, showlog=showlog, tnames=tnames)
+    dat = get_data(ifile, piter=piter, showlog=showlog, tnames=tnames,
+                   metaonly=metaonly, bounds=bounds)
 
     if ldata.to_sutm is True:
         dat = utm_to_south(dat)
@@ -2526,7 +2522,7 @@ def get_sentinel1(ifile, piter=None, showlog=print, tnames=None,
 
 
 def get_sentinel2(ifile, piter=None, showlog=print, tnames=None,
-                  metaonly=False):
+                  metaonly=False, bounds=None):
     """
     Get Sentinel-2 Data.
 
@@ -2542,12 +2538,20 @@ def get_sentinel2(ifile, piter=None, showlog=print, tnames=None,
         list of band names to import, in order. The default is None.
     metaonly : bool, optional
         Retrieve only the metadata for the file. The default is False.
+    bounds : tuple
+        Bounds of data to import as (left, bottom, right, top)
 
     Returns
     -------
     dat : PyGMI raster Data
         dataset imported
     """
+    ext = os.path.splitext(ifile)[1].lower()
+
+    if ext == '.safe':
+        lvl = os.path.basename(ifile)[7:10]
+        ifile = ifile+f'/MTD_MSI{lvl}.xml'
+
     if piter is None:
         piter = ProgressBarText().iter
 
@@ -2585,10 +2589,14 @@ def get_sentinel2(ifile, piter=None, showlog=print, tnames=None,
             if tnames is not None and bname not in tnames:
                 continue
 
+            window, newbounds = bounds_intersection(dataset, bounds, showlog)
+            if window is False:
+                return None
+
             dat.append(Data())
 
             if not metaonly:
-                rtmp = dataset.read(i)
+                rtmp = dataset.read(i, window=window)
 
                 dat[-1].data = rtmp
                 dat[-1].data = np.ma.masked_invalid(dat[-1].data)
@@ -2602,7 +2610,8 @@ def get_sentinel2(ifile, piter=None, showlog=print, tnames=None,
 
             dat[-1].dataid = bname
             dat[-1].nodata = nval
-            dat[-1].meta_from_rasterio(dataset)
+            dat[-1].meta_from_rasterio(dataset, newbounds)
+
             dat[-1].filename = ifile
             if 'WAVELENGTH' in bmeta and plvl == 'Level-2A':
                 dat[-1].units = 'Reflectance'

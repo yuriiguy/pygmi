@@ -30,6 +30,7 @@ import datetime
 import numpy as np
 from rasterio.io import MemoryFile
 from rasterio import Affine
+from rasterio.windows import Window
 
 
 def numpy_to_pygmi(data, pdata=None, dataid=None):
@@ -141,6 +142,60 @@ def bounds_to_transform(bounds, dxy):
     return transform, shape
 
 
+def bounds_intersection(dataset, bounds, showlog=print):
+    """
+    Find the intersection between some bounds and a dataset.
+
+    Parameters
+    ----------
+    dataset : rasterio dataset
+        Rasterio dataset.
+    bounds : tuple
+        Bounds of data as (left, bottom, right, top).
+    showlog : function, optional
+        Display information. The default is print.
+
+    Returns
+    -------
+    window : rasterio window
+        Intersection area as window.
+    newbounds : tuple
+        Intersection area as bounds.
+
+    """
+    if bounds is not None:
+        xdim, ydim = dataset.res
+        xmin, ymin, xmax, ymax = dataset.bounds
+        xmin1, ymin1, xmax1, ymax1 = bounds
+
+        if xmin1 >= xmax or xmax1 <= xmin or ymin1 >= ymax or ymax1 <= ymin:
+            showlog('Warning: No data in polygon.')
+            return (False, False)
+
+        xmin2 = max(xmin, xmin1)
+        ymin2 = max(ymin, ymin1)
+        xmax2 = min(xmax, xmax1)
+        ymax2 = min(ymax, ymax1)
+
+        xoff = int((xmin2-xmin)//xdim)
+        yoff = int((ymax-ymax2)//ydim)
+
+        xsize = int((xmax2-xmin2)//xdim)
+        ysize = int((ymax2-ymin2)//xdim)
+
+        # iraster = (xoff, yoff, xsize, ysize)
+        newbounds = (xmin+xoff*xdim,
+                     ymax-yoff*ydim-ysize*ydim,
+                     xmin+xoff*xdim+xsize*xdim,
+                     ymax-yoff*ydim)
+        window = Window(xoff, yoff, xsize, ysize)
+    else:
+        newbounds = None
+        window = None
+
+    return (window, newbounds)
+
+
 class Data():
     """
     PyGMI Data Object.
@@ -245,7 +300,7 @@ class Data():
 
         return True
 
-    def meta_from_rasterio(self, dataset):
+    def meta_from_rasterio(self, dataset, bounds=None):
         """
         Set transform, bounds, extent, xdim and ydim from a rasterio dataset.
 
@@ -253,6 +308,8 @@ class Data():
         ----------
         dataset : rasterio dataset
             Rasterio dataset.
+        bounds : tuple
+            Bounds of data as (left, bottom, right, top)
 
         Returns
         -------
@@ -261,14 +318,18 @@ class Data():
         """
         self.xdim = dataset.transform[0]
         self.ydim = abs(dataset.transform[4])
+        self.crs = dataset.crs
+        self.meta = dataset.meta
 
-        left, bottom, right, top = dataset.bounds
+        if bounds is None:
+            left, bottom, right, top = dataset.bounds
+            self.transform = dataset.transform
+        else:
+            left, bottom, right, top = bounds
+            self.transform = Affine(self.xdim, 0, left, 0, -self.ydim, top)
 
         self.extent = (left, right, bottom, top)
         self.bounds = (left, bottom, right, top)
-        self.transform = dataset.transform
-        self.crs = dataset.crs
-        self.meta = dataset.meta
 
     def set_transform(self, xdim=None, xmin=None, ydim=None, ymax=None,
                       transform=None, iraster=None, rows=None, cols=None):
@@ -412,6 +473,8 @@ class RasterMeta():
         self.tnames = []
         self.banddata = []
         self.to_sutm = False
+        self.datetime = datetime.datetime(1900, 1, 1)
+        self.nodata = None
 
     def fromData(self, dat):
         """
@@ -431,6 +494,8 @@ class RasterMeta():
         self.sensor = data.metadata['Raster']['Sensor']
         self.crs = data.crs
         self.filename = data.filename
+        self.datetime = data.datetime
+        self.nodata = data.nodata
 
         self.bands = []
         self.tnames = []

@@ -396,7 +396,7 @@ class MyMplCanvas(FigureCanvasQTAgg):
         pid = pid[~np.isnan(tres)]
         tres = tres[~np.isnan(tres)].astype(float)
 
-        pid = np.char.strip(pid)
+        pid = np.strings.strip(pid)
 
         if phase == 'P':
             ptres = tres[pid == 'P']

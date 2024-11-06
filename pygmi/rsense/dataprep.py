@@ -177,7 +177,7 @@ class TopoCorrect(BasicModule):
         dem = lstack(data+[dem], self.piter, showlog=self.showlog,
                      masterid=data[0].dataid)
 
-        dem = data.pop(-1)
+        dem = dem.pop(-1)
         azimuth = float(self.le_azi.text())
         zenith = float(self.le_zen.text())
 
@@ -389,8 +389,8 @@ def c_correction(data, dem, azimuth, zenith, showlog=print, piter=iter):
 
     Returns
     -------
-    data2 : TYPE
-        DESCRIPTION.
+    data2 : list
+        List of c-corrected data arrays.
 
     """
     adeg, _, _ = aspect2(dem.data)
@@ -449,23 +449,56 @@ def _testfn2():
 
 def _testfn():
     """Test routine topo."""
-    ifile1 = r"D:\Landslides\JTNdem.tif"
-    ifile2 = r"D:\Landslides\GeoTiff\S2B_T36JTN_R092_20220428_stack.tif"
-    ifile2 = r"D:\Landslides\test.tif"
+    import matplotlib.pyplot as plt
+    from pygmi.raster.misc import norm2, lstack
+    # ifile1 = r"D:\Landslides\JTNdem.tif"
+    # ifile2 = r"D:\Landslides\GeoTiff\S2B_T36JTN_R092_20220428_stack.tif"
+    # ifile2 = r"D:\Landslides\test.tif"
 
-    dat1 = get_raster(ifile1)
-    dat2 = get_raster(ifile2)
+    # dat1 = get_raster(ifile1)
+    # dat2 = get_raster(ifile2)
+    # dat = dat1+dat2
 
-    dat = dat1+dat2
+    # app = QtWidgets.QApplication(sys.argv)
 
-    # dat3 = lstack(dat1+dat2, dxy=10, commonmask=True)
+    # tmp1 = TopoCorrect()
+    # tmp1.indata['Raster'] = dat
+    # tmp1.settings()
 
-    app = QtWidgets.QApplication(sys.argv)
+    ifile = r"D:\Landslides\oneclip.tif"
+    zenith = 42.7956361279988
+    azimuth = 44.8154655713449
 
-    tmp1 = TopoCorrect()
-    tmp1.indata['Raster'] = dat
-    tmp1.settings()
+    data = get_raster(ifile)
+    dem = data.pop(-1)
+
+    data = lstack(data)
+    dem = lstack(data+[dem], masterid=data[0].dataid)
+    dem = dem.pop(-1)
+
+    data2 = c_correction(data, dem, azimuth, zenith)
+
+    for dat in [data, data2]:
+        plt.figure(dpi=200)
+
+        red = dat[3].data
+        green = dat[2].data
+        blue = dat[1].data
+
+        rmin, rmax = .1, .2
+        gmin, gmax = .1, .2
+        bmin, bmax = .1, .2
+
+        img = np.zeros((red.shape[0], red.shape[1], 3), dtype=np.uint8)
+
+        img[:, :, 0] = norm2(red, rmin, rmax)*255
+        img[:, :, 1] = norm2(green, gmin, gmax)*255
+        img[:, :, 2] = norm2(blue, bmin, bmax)*255
+
+        plt.imshow(img, extent=dat[0].extent)
+        plt.show()
+
 
 
 if __name__ == "__main__":
-    _testfn2()
+    _testfn()

@@ -48,7 +48,7 @@ from pygmi.raster.iodefs import get_raster, export_raster
 from pygmi.vector.dataprep import reprojxy
 from pygmi.raster.misc import lstack
 from pygmi.raster.reproj import GroupProj, data_reproject
-from pygmi.rsense.iodefs import get_data
+from pygmi.rsense.iodefs import get_data, get_from_rastermeta
 
 
 class Continuation(BasicModule):
@@ -432,7 +432,8 @@ class DataMerge(BasicModule):
         self.idir = None
         self.tmpdir = None
         self.is_import = True
-        self.method = merge_median
+        self.method = 'merge_median'
+        self.res = None
 
         self.rb_first = QtWidgets.QRadioButton('First - copy first file over '
                                                'last file at overlap.')
@@ -450,10 +451,8 @@ class DataMerge(BasicModule):
         self.le_idirlist = QtWidgets.QLineEdit('')
         self.le_sfile = QtWidgets.QLineEdit('')
         self.le_nodata = QtWidgets.QLineEdit('')
-        self.cb_files_diff = QtWidgets.QCheckBox(
-            'Mosaic by band labels, '
-            'since band order may differ, or input files have different '
-            'numbers of bands or nodata values.')
+        self.le_res = QtWidgets.QLineEdit('')
+
         self.cb_shift_to_median = QtWidgets.QCheckBox(
             'Shift bands to median value before mosaic. May '
             'allow for cleaner mosaic if datasets are offset.')
@@ -487,7 +486,6 @@ class DataMerge(BasicModule):
         pb_sfile.setStyleSheet('text-align:left;')
         pb_idirlist.setStyleSheet('text-align:left;')
 
-        self.cb_files_diff.setChecked(True)
         self.cb_shift_to_median.setChecked(False)
         self.rb_median.setChecked(True)
 
@@ -513,8 +511,10 @@ class DataMerge(BasicModule):
         gl_main.addWidget(QtWidgets.QLabel('Nodata Value (optional):'),
                           3, 0, 1, 1)
         gl_main.addWidget(self.le_nodata, 3, 1, 1, 1)
+        gl_main.addWidget(QtWidgets.QLabel('Output Resolution (optional):'),
+                          4, 0, 1, 1)
+        gl_main.addWidget(self.le_res, 4, 1, 1, 1)
 
-        gl_main.addWidget(self.cb_files_diff, 4, 0, 1, 2)
         gl_main.addWidget(self.cb_shift_to_median, 5, 0, 1, 2)
         gl_main.addWidget(gbox_merge_method, 6, 0, 1, 2)
         gl_main.addWidget(self.cb_bands_to_files, 7, 0, 1, 2)
@@ -525,8 +525,7 @@ class DataMerge(BasicModule):
         buttonbox.rejected.connect(self.reject)
         pb_idirlist.pressed.connect(self.get_idir)
         pb_sfile.pressed.connect(self.get_sfile)
-        self.cb_shift_to_median.stateChanged.connect(self.shiftchanged)
-        self.cb_files_diff.stateChanged.connect(self.filesdiffchanged)
+
         self.rb_first.clicked.connect(self.method_change)
         self.rb_last.clicked.connect(self.method_change)
         self.rb_min.clicked.connect(self.method_change)
@@ -547,38 +546,11 @@ class DataMerge(BasicModule):
         if self.rb_last.isChecked():
             self.method = 'last'
         if self.rb_min.isChecked():
-            self.method = merge_min
+            self.method = 'merge_min'
         if self.rb_max.isChecked():
-            self.method = merge_max
+            self.method = 'merge_max'
         if self.rb_median.isChecked():
-            self.method = merge_median
-
-    def shiftchanged(self):
-        """
-        Shift mean clicked.
-
-        Returns
-        -------
-        None.
-
-        """
-        if self.cb_shift_to_median.isChecked():
-            self.cb_files_diff.setChecked(True)
-
-    def filesdiffchanged(self):
-        """
-        Files different clicked.
-
-        Returns
-        -------
-        None.
-
-        """
-        if not self.cb_files_diff.isChecked():
-            self.cb_shift_to_median.setChecked(False)
-            self.cb_bands_to_files.hide()
-        else:
-            self.cb_bands_to_files.show()
+            self.method = 'merge_median'
 
     def get_idir(self):
         """
@@ -638,7 +610,7 @@ class DataMerge(BasicModule):
             if tmp != 1:
                 return False
 
-        tmp = self.acceptall()
+        tmp = self.merge_different()
 
         return tmp
 
@@ -653,7 +625,6 @@ class DataMerge(BasicModule):
         """
         self.saveobj(self.idir)
         self.saveobj(self.le_idirlist)
-        self.saveobj(self.cb_files_diff)
         self.saveobj(self.cb_shift_to_median)
 
         self.saveobj(self.rb_first)
@@ -667,25 +638,6 @@ class DataMerge(BasicModule):
         self.saveobj(self.forcetype)
         self.saveobj(self.singleband)
 
-    def acceptall(self):
-        """
-        Accept option.
-
-        Updates self.outdata, which is used as input to other modules.
-
-        Returns
-        -------
-        bool
-            Success of routine.
-
-        """
-        if self.cb_files_diff.isChecked():
-            tmp = self.merge_different()
-        else:
-            tmp = self.merge_same()
-
-        return tmp
-
     def merge_different(self):
         """
         Merge files with different numbers of bands and/or band order.
@@ -698,310 +650,30 @@ class DataMerge(BasicModule):
             Success of routine.
 
         """
-        indata = []
-        if 'Raster' in self.indata:
-            for i in self.indata['Raster']:
-                indata.append(i)
+        bfile = self.le_sfile.text()
+        bandstofiles = self.cb_bands_to_files.isChecked()
+        shifttomedian = self.cb_shift_to_median.isChecked()
 
-        if self.idir is not None:
-            ifiles = []
-            for ftype in ['*.tif', '*.hdr', '*.img', '*.ers']:
-                ifiles += glob.glob(os.path.join(self.idir, ftype))
-
-            if not ifiles:
-                self.showlog('No input files in that directory')
-                return False
-
-            for ifile in self.piter(ifiles):
-                indata += get_raster(ifile, piter=iter, metaonly=True)
-
-            if len(indata) == len(ifiles):
-                self.singleband = True
-
-        if indata is None:
-            self.showlog('No input datasets')
+        try:
+            if self.le_nodata.text().strip() == '':
+                nodata = None
+            else:
+                nodata = float(self.le_nodata.text())
+            if self.le_res.text().strip() == '':
+                res = None
+            else:
+                res = float(self.le_res.text())
+        except ValueError:
+            self.showlog('Value Error in nodata or resolution')
             return False
 
-        # Get projection information
-        wkt = []
-        crs = []
-        for i in indata:
-            if i.crs is None:
-                self.showlog(f'{i.dataid} has no projection. '
-                             'Please assign one.')
-                return False
-
-            wkt.append(i.crs.to_wkt())
-            crs.append(i.crs)
-            nodata = i.nodata
-
-        wkt, iwkt, numwkt = np.unique(wkt, return_index=True,
-                                      return_counts=True)
-        if len(wkt) > 1:
-            self.showlog('Error: Mismatched input projections. '
-                         'Selecting most common projection')
-
-            crs = crs[iwkt[numwkt == numwkt.max()][0]]
-        else:
-            crs = indata[0].crs
-
-        bfile = self.le_sfile.text()
-        if bfile[-3:] == 'shp':
-            bounds = get_shape_bounds(bfile, crs, self.showlog)
-        else:
-            dattmp = get_raster(bfile, piter=iter, metaonly=True)
-            if dattmp is None:
-                bounds = None
-            else:
-                bounds = dattmp[0].bounds
-                x = [bounds[0], bounds[2]]
-                y = [bounds[1], bounds[3]]
-                x, y = reprojxy(x, y, dattmp[0].crs, crs)
-                bounds = [x[0], y[0], x[1], y[1]]
-
-        # Start Merge
-        bandlist = []
-        for i in indata:
-            bandlist.append(i.dataid)
-
-        bandlist = list(set(bandlist))
-
-        if self.singleband is True:
-            bandlist = ['Band_1']
-
-        outdat = []
-        for dataid in bandlist:
-            self.showlog('Extracting '+dataid+'...')
-
-            if self.cb_bands_to_files.isChecked():
-                odir = os.path.join(self.idir, 'mosaic')
-                os.makedirs(odir, exist_ok=True)
-                ofile = dataid+'.tif'
-                ofile = ofile.replace(' ', '_')
-                ofile = ofile.replace(',', '_')
-                ofile = ofile.replace('*', 'mult')
-                ofile = os.path.join(odir, ofile)
-
-                if os.path.exists(ofile):
-                    self.showlog('Output file exists, skipping.')
-                    continue
-
-            ifiles = []
-            allmval = []
-            for i in self.piter(indata):
-                if i.dataid != dataid and self.singleband is False:
-                    continue
-                metadata = i.metadata
-                datetime = i.datetime
-
-                i2 = get_raster(i.filename, piter=iter, dataid=i.dataid,
-                                bounds=bounds, showlog=self.showlog)
-
-                if i2 is None:
-                    continue
-
-                i2 = i2[0]
-
-                if i2.crs != crs:
-                    src_height, src_width = i2.data.shape
-
-                    transform, width, height = calculate_default_transform(
-                        i2.crs, crs, src_width, src_height, *i2.bounds)
-
-                    i2 = data_reproject(i2, crs, transform, height, width)
-
-                if self.forcetype is not None:
-                    i2.data = i2.data.astype(self.forcetype)
-
-                if self.cb_shift_to_median.isChecked():
-                    mval = np.ma.median(i2.data)
-                else:
-                    mval = 0
-                allmval.append(mval)
-
-                if self.singleband is True:
-                    i2.dataid = 'Band_1'
-
-                trans = rasterio.transform.from_origin(i2.extent[0],
-                                                       i2.extent[3],
-                                                       i2.xdim, i2.ydim)
-
-                if self.tmpdir is None:
-                    self.tmpdir = tempfile.gettempdir()
-
-                tmpfile = os.path.join(self.tmpdir,
-                                       os.path.basename(i.filename))
-
-                tmpid = i2.dataid
-                tmpid = tmpid.replace(' ', '_')
-                tmpid = tmpid.replace(',', '_')
-                tmpid = tmpid.replace('*', 'mult')
-                tmpid = tmpid.replace(r'/', 'div')
-
-                tmpfile = tmpfile[:-4]+'_'+tmpid+'.tif'
-
-                raster = rasterio.open(tmpfile, 'w', driver='GTiff',
-                                       height=i2.data.shape[0],
-                                       width=i2.data.shape[1], count=1,
-                                       dtype=i2.data.dtype,
-                                       transform=trans)
-
-                if self.le_nodata.text() != '':
-                    nodata = float(self.le_nodata.text())
-                elif np.issubdtype(i2.data.dtype, np.floating):
-                    nodata = 1.0e+20
-                else:
-                    nodata = -99999
-
-                tmpdat = i2.data
-                tmpdat = tmpdat.filled(nodata)
-                tmpdat = np.ma.masked_equal(tmpdat, nodata)
-                tmpdat = tmpdat-mval
-
-                raster.write(tmpdat, 1)
-                raster.write_mask(~np.ma.getmaskarray(i2.data))
-
-                raster.close()
-                ifiles.append(tmpfile)
-                del i2
-
-            if len(ifiles) < 2:
-                self.showlog('Too few bands of name '+dataid)
-                continue
-
-            self.showlog('Mosaicing '+dataid+'...')
-
-            with rasterio.Env(CPL_DEBUG=True):
-                mosaic, otrans = rasterio.merge.merge(ifiles, nodata=nodata,
-                                                      method=self.method,
-                                                      bounds=bounds)
-
-            for j in ifiles:
-                if os.path.exists(j):
-                    os.remove(j)
-                if os.path.exists(j+'.msk'):
-                    os.remove(j+'.msk')
-
-            mosaic = mosaic.squeeze()
-            mosaic = np.ma.masked_equal(mosaic, nodata)
-            mosaic = mosaic + np.median(allmval)
-            outdat.append(numpy_to_pygmi(mosaic, dataid=dataid))
-            outdat[-1].set_transform(transform=otrans)
-            outdat[-1].crs = crs
-            outdat[-1].nodata = nodata
-            outdat[-1].metadata = metadata
-            outdat[-1].datetime = datetime
-
-            if self.cb_bands_to_files.isChecked():
-                export_raster(ofile, outdat, 'GTiff', compression='DEFLATE',
-                              showlog=self.showlog, piter=self.piter)
-
-                del outdat
-                del mosaic
-                outdat = []
-
-        if bounds is not None and self.le_sfile.text()[-3:] == 'shp':
-            # x0, y0, x1, y1 = bounds
-            # poly = Polygon([(x0, y0), (x1, y0), (x1, y1), (x0, y1), (x0, y0)])
-            # gdf = gpd.GeoDataFrame({'geometry': [poly]})
-
-            # if self.le_sfile.text()[-3:] == 'shp':
-            #     gdf = self.le_sfile.text()
-
-            outdat = cut_raster(outdat, self.le_sfile.text(), deepcopy=False)
+        outdat = mosaic(self.indata, self.idir, bfile, bandstofiles,
+                        self.piter, self.showlog, self.singleband,
+                        self.forcetype, shifttomedian, self.tmpdir,
+                        nodata, self.method, res)
 
         if outdat:
             self.outdata['Raster'] = outdat
-
-        return True
-
-    def merge_same(self):
-        """
-        Mosaic files with same numbers of bands and band order.
-
-        This uses much less memory, but is less flexible.
-
-        Returns
-        -------
-        bool
-            Success of routine.
-
-        """
-        ifiles = []
-        if 'Raster' in self.indata:
-            for i in self.indata['Raster']:
-                ifiles.append(i.filename)
-
-        if self.idir is not None:
-            for ftype in ['*.tif', '*.hdr', '*.img', '*.ers']:
-                ifiles += glob.glob(os.path.join(self.idir, ftype))
-
-        if not ifiles:
-            self.showlog('No input datasets')
-            return False
-
-        for i, ifile in enumerate(ifiles):
-            if ifile[-3:] == 'hdr':
-                ifile = ifile[:-4]
-                if os.path.exists(ifile+'.dat'):
-                    ifiles[i] = ifile+'.dat'
-                elif os.path.exists(ifile+'.raw'):
-                    ifiles[i] = ifile+'.raw'
-                elif os.path.exists(ifile+'.img'):
-                    ifiles[i] = ifile+'.img'
-                elif not os.path.exists(ifile):
-                    return False
-
-        # Get projection information
-        wkt = []
-        nodata = []
-        for ifile in ifiles:
-            with rasterio.open(ifile) as dataset:
-                if dataset.crs is None:
-                    self.showlog(f'{ifile} has no projection. '
-                                 'Please assign one.')
-                    return False
-                wkt.append(dataset.crs.to_wkt())
-                crs = dataset.crs
-                nodata.append(dataset.nodata)
-
-        wkt = list(set(wkt))
-        if len(wkt) > 1:
-            self.showlog('Error: Mismatched input projections')
-            return False
-
-        nodata = list(set(nodata))
-        if len(nodata) > 1:
-            self.showlog('Error: Mismatched nodata values. Try using merge '
-                         'by band labels merge option. Please confirm bands '
-                         'to be merged have the same label.')
-            return False
-
-        # Get band names and nodata
-        with rasterio.open(ifiles[0]) as dataset:
-            bnames = dataset.descriptions
-            if None in bnames:
-                bnames = ['Band '+str(i) for i in dataset.indexes]
-            nodata = dataset.nodata
-
-        # Start Merge
-        if self.le_nodata.text() != '':
-            nodata = float(self.le_nodata.text())
-
-        mosaic, otrans = rasterio.merge.merge(ifiles, nodata=nodata,
-                                              method=self.method)
-
-        mosaic = np.ma.masked_equal(mosaic, nodata)
-
-        outdat = []
-        for i, dataid in enumerate(bnames):
-            outdat.append(numpy_to_pygmi(mosaic[i], dataid=dataid))
-            outdat[-1].set_transform(transform=otrans)
-            outdat[-1].crs = crs
-            outdat[-1].nodata = nodata
-
-        # outdat = trim_raster(outdat)
-        self.outdata['Raster'] = outdat
 
         return True
 
@@ -1595,6 +1267,7 @@ def cut_raster(data, ifile, showlog=print, deepcopy=True):
                     'the shapefile.')
             return None
 
+    gdf = gdf.to_crs(data[0].crs)
     gdf = gdf[gdf.geometry != None]
 
     if 'Polygon' not in gdf.geom_type.iloc[0]:
@@ -2009,6 +1682,273 @@ def merge_max(merged_data, new_data, merged_mask, new_mask, index=None,
     tmp1[tmp] = np.maximum(merged_data[tmp], new_data[tmp])
 
     merged_data[:] = tmp1
+
+
+def mosaic(dat, idir=None, bfile=None, bandstofiles=False, piter=iter,
+           showlog=print, singleband=False, forcetype=None,
+           shifttomedian=False, tmpdir=None, nodata=None, method='first',
+           res=None):
+    """
+    Merge files with different numbers of bands and/or band order.
+
+    This uses more memory, but is flexible.
+
+    Parameters
+    ----------
+    dat : list
+        List of PyGMI databands to be merged. Can be empty if idir is provided.
+    idir : str, optional
+        Directory where file to be mosaiced are found. The default is None.
+    bfile : str, optional
+        Path to boundary file. Can be shapefile or raster. The default is None.
+    bandstofiles : bool, optional
+        Export output bands to files. The default is False.
+    piter : function, optional
+        Progress bar iterable. The default is iter.
+    showlog : function, optional
+        Function for printing text. The default is print.
+    singleband : bool, optional
+        Ignore band names, since there is only one band. The default is False.
+    forcetype : bool, optional
+        Force input data type. The default is None.
+    shifttomedian : bool, optional
+        Shift bands to median value. The default is False.
+    tmpdir : str, optional
+        Alternate directory for temporary files. The default is None.
+    nodata : float, optional
+        Nodata value. The default is None.
+    method : str, optional
+        Mosaic method. Can be 'first', 'last', 'merge_min', 'merge_max' or
+        'merge_median. The default is 'first'.
+    res : float, optional
+        Output resolution. Can be a tuple. The default is None.
+
+    Returns
+    -------
+    outdat : PyGMI raster data
+        Output mosaiced dataset.
+
+    """
+    if method == 'merge_min':
+        method = merge_min
+    if method == 'merge_max':
+        method = merge_max
+    if method == 'merge_median':
+        method = merge_median
+
+    indata = []
+    if 'Raster' in dat:
+        for i in dat['Raster']:
+            indata.append(i)
+
+    if 'RasterFileList' in dat:
+        for i in dat['RasterFileList']:
+            indata += get_from_rastermeta(i, piter=iter, metaonly=True)
+
+    if idir is not None:
+        ifiles = []
+        for ftype in ['*.tif', '*.hdr', '*.img', '*.ers']:
+            ifiles += glob.glob(os.path.join(idir, ftype))
+
+        if not ifiles:
+            showlog('No input files in that directory')
+            return False
+
+        for ifile in piter(ifiles):
+            indata += get_data(ifile, piter=iter, metaonly=True)
+
+        if len(indata) == len(ifiles):
+            singleband = True
+
+    if indata is None:
+        showlog('No input datasets')
+        return False
+
+    # Get projection information
+    wkt = []
+    crs = []
+    for i in indata:
+        if i.crs is None:
+            showlog(f'{i.dataid} has no projection. Please assign one.')
+            return False
+
+        wkt.append(i.crs.to_wkt())
+        crs.append(i.crs)
+        nodata = i.nodata
+
+    wkt, iwkt, numwkt = np.unique(wkt, return_index=True,
+                                  return_counts=True)
+    if len(wkt) > 1:
+        showlog('Error: Mismatched input projections. '
+                'Selecting most common projection')
+
+        crs = crs[iwkt[numwkt == numwkt.max()][0]]
+    else:
+        crs = indata[0].crs
+
+    if bfile[-3:] == 'shp':
+        bounds = get_shape_bounds(bfile, crs, showlog)
+    else:
+        dattmp = get_data(bfile, piter=iter, metaonly=True)
+        if dattmp is None:
+            bounds = None
+        else:
+            bounds = dattmp[0].bounds
+            x = [bounds[0], bounds[2]]
+            y = [bounds[1], bounds[3]]
+            x, y = reprojxy(x, y, dattmp[0].crs, crs)
+            bounds = [x[0], y[0], x[1], y[1]]
+
+    # Start Merge
+    bandlist = []
+    for i in indata:
+        bandlist.append(i.dataid)
+
+    bandlist = list(set(bandlist))
+
+    if singleband is True:
+        bandlist = ['Band_1']
+
+    outdat = []
+    for dataid in bandlist:
+        showlog('Extracting '+dataid+'...')
+
+        if bandstofiles:
+            odir = os.path.join(idir, 'mosaic')
+            os.makedirs(odir, exist_ok=True)
+            ofile = dataid+'.tif'
+            ofile = ofile.replace(' ', '_')
+            ofile = ofile.replace(',', '_')
+            ofile = ofile.replace('*', 'mult')
+            ofile = os.path.join(odir, ofile)
+
+            if os.path.exists(ofile):
+                showlog('Output file exists, skipping.')
+                continue
+
+        ifiles = []
+        allmval = []
+        for i in piter(indata):
+            if i.dataid != dataid and singleband is False:
+                continue
+            metadata = i.metadata
+            datetime = i.datetime
+
+            x = [bounds[0], bounds[2]]
+            y = [bounds[1], bounds[3]]
+            x, y = reprojxy(x, y, crs, i.crs)
+            bounds2 = [x[0], y[0], x[1], y[1]]
+
+            i2 = get_data(i.filename, piter=iter, tnames=[i.dataid],
+                          bounds=bounds2, showlog=showlog)
+
+            if i2 is None:
+                continue
+
+            i2 = i2[0]
+
+            if i2.crs != crs:
+                src_height, src_width = i2.data.shape
+
+                transform, width, height = calculate_default_transform(
+                    i2.crs, crs, src_width, src_height, *i2.bounds)
+
+                i2 = data_reproject(i2, crs, transform, height, width)
+
+            if forcetype is not None:
+                i2.data = i2.data.astype(forcetype)
+
+            if shifttomedian:
+                mval = np.ma.median(i2.data)
+            else:
+                mval = 0
+            allmval.append(mval)
+
+            if singleband is True:
+                i2.dataid = 'Band_1'
+
+            trans = rasterio.transform.from_origin(i2.extent[0],
+                                                   i2.extent[3],
+                                                   i2.xdim, i2.ydim)
+
+            if tmpdir is None:
+                tmpdir = tempfile.gettempdir()
+
+            if i.meta['driver'] == 'SENTINEL2':
+                tmpfile = os.path.join(tmpdir, os.path.basename(os.path.dirname(i.filename)))
+            else:
+                tmpfile = os.path.join(tmpdir, os.path.basename(i.filename))
+
+            tmpid = i2.dataid
+            tmpid = tmpid.replace(' ', '_')
+            tmpid = tmpid.replace(',', '_')
+            tmpid = tmpid.replace('*', 'mult')
+            tmpid = tmpid.replace(r'/', 'div')
+
+            tmpfile = tmpfile[:-4]+'_'+tmpid+'.tif'
+
+            raster = rasterio.open(tmpfile, 'w', driver='GTiff',
+                                   height=i2.data.shape[0],
+                                   width=i2.data.shape[1], count=1,
+                                   dtype=i2.data.dtype,
+                                   transform=trans)
+
+            if nodata is None and np.issubdtype(i2.data.dtype, np.floating):
+                nodata = 1.0e+20
+            elif nodata is None:
+                nodata = -99999
+
+            tmpdat = i2.data
+            tmpdat = tmpdat.filled(nodata)
+            tmpdat = np.ma.masked_equal(tmpdat, nodata)
+            tmpdat = tmpdat-mval
+
+            raster.write(tmpdat, 1)
+            raster.write_mask(~np.ma.getmaskarray(i2.data))
+
+            raster.close()
+            ifiles.append(tmpfile)
+            del i2
+
+        if len(ifiles) < 2:
+            showlog('Too few bands of name '+dataid)
+            continue
+
+        showlog('Mosaicing '+dataid+'...')
+
+        with rasterio.Env(CPL_DEBUG=True):
+            datmos, otrans = rasterio.merge.merge(ifiles, nodata=nodata,
+                                                  method=method, res=res,
+                                                  bounds=bounds)
+
+        for j in ifiles:
+            if os.path.exists(j):
+                os.remove(j)
+            if os.path.exists(j+'.msk'):
+                os.remove(j+'.msk')
+
+        datmos = datmos.squeeze()
+        datmos = np.ma.masked_equal(datmos, nodata)
+        datmos = datmos + np.median(allmval)
+        outdat.append(numpy_to_pygmi(datmos, dataid=dataid))
+        outdat[-1].set_transform(transform=otrans)
+        outdat[-1].crs = crs
+        outdat[-1].nodata = nodata
+        outdat[-1].metadata = metadata
+        outdat[-1].datetime = datetime
+
+        if bandstofiles:
+            export_raster(ofile, outdat, 'GTiff', compression='DEFLATE',
+                          showlog=showlog, piter=piter)
+
+            del outdat
+            del datmos
+            outdat = []
+
+    if bounds is not None and bfile[-3:] == 'shp':
+        outdat = cut_raster(outdat, bfile, deepcopy=False)
+
+    return outdat
 
 
 def redistribute_vertices(geom, distance):
