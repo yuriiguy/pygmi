@@ -406,7 +406,7 @@ class FuzzyClust(BasicModule):
             elif self.rb_random.isChecked() is True:
                 self.showlog('Initial guess: random')
 
-                clobj_fcn = np.array([np.Inf])
+                clobj_fcn = np.array([np.inf])
                 for j in range(no_runs):
                     self.showlog(f'Run {j+1} of {no_runs}')
 
