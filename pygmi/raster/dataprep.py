@@ -39,6 +39,7 @@ from rasterio.warp import calculate_default_transform
 from rasterio.mask import mask as riomask
 import geopandas as gpd
 from shapely import LineString
+from shapely import Polygon
 
 from pygmi import menu_default
 from pygmi.raster.datatypes import Data
@@ -46,7 +47,7 @@ from pygmi.misc import ContextModule, BasicModule
 from pygmi.raster.datatypes import numpy_to_pygmi
 from pygmi.raster.iodefs import get_raster, export_raster
 from pygmi.vector.dataprep import reprojxy
-from pygmi.raster.misc import lstack
+from pygmi.raster.misc import lstack, cut_raster
 from pygmi.raster.reproj import GroupProj, data_reproject
 from pygmi.rsense.iodefs import get_data, get_from_rastermeta
 
@@ -1231,140 +1232,6 @@ def cluster_to_raster(indata):
         indata['Raster'][-1].data = indata['Raster'][-1].data + 1
 
     return indata
-
-
-def cut_raster(data, ifile, showlog=print, deepcopy=True):
-    """
-    Cut a raster dataset.
-
-    Cut a raster dataset using a shapefile.
-
-    Parameters
-    ----------
-    data : list of PyGMI Data
-        PyGMI Dataset
-    ifile : str
-        shapefile used to cut data
-    showlog : function, optional
-        Function for printing text. The default is print.
-
-    Returns
-    -------
-    data : list of PyGMI Data
-        PyGMI Dataset
-    """
-    if deepcopy is True:
-        data = [i.copy() for i in data]
-
-    if isinstance(ifile, gpd.GeoDataFrame):
-        gdf = ifile
-    else:
-        try:
-            gdf = gpd.read_file(ifile)
-        except:
-            showlog('There was a problem importing the shapefile. Please make '
-                    'sure you have at all the individual files which make up '
-                    'the shapefile.')
-            return None
-
-    gdf = gdf.to_crs(data[0].crs)
-    gdf = gdf[gdf.geometry != None]
-
-    if 'Polygon' not in gdf.geom_type.iloc[0]:
-        showlog('You need a polygon in that shape file')
-        return None
-
-    for idata in data:
-        # Convert the layer extent to image pixel coordinates
-        dext = idata.bounds
-        lext = gdf['geometry'].total_bounds
-
-        if ((dext[0] > lext[2]) or (dext[2] < lext[0])
-                or (dext[1] > lext[3]) or (dext[3] < lext[1])):
-
-            showlog('The shapefile is not in the same area as the raster '
-                    'dataset. Please check its coordinates and make sure its '
-                    'projection is the same as the raster dataset')
-            return None
-
-        # This section converts PolygonZ to Polygon, and takes first polygon.
-        coords = gdf['geometry']
-
-        dat, trans = riomask(idata.to_mem(), coords, crop=True)
-
-        idata.data = np.ma.masked_equal(dat.squeeze(), idata.nodata)
-
-        idata.set_transform(transform=trans)
-
-    # data = trim_raster(data)
-
-    return data
-
-
-# def data_reproject(data, ocrs, otransform=None, orows=None,
-#                    ocolumns=None, icrs=None):
-#     """
-#     Reproject dataset.
-
-#     Parameters
-#     ----------
-#     data : PyGMI Data
-#         PyGMI dataset.
-#     ocrs : CRS
-#         output crs.
-#     otransform : Affine, optional
-#         Output affine transform. The default is None.
-#     orows : int, optional
-#         output rows. The default is None.
-#     ocolumns : int, optional
-#         output columns. The default is None.
-#     icrs : CRS, optional
-#         input crs. The default is None.
-
-#     Returns
-#     -------
-#     data2 : PyGMI Data
-#         Reprojected dataset.
-
-#     """
-#     if icrs is None:
-#         icrs = data.crs
-
-#     if otransform is None:
-#         src_height, src_width = data.data.shape
-
-#         otransform, ocolumns, orows = calculate_default_transform(
-#             icrs, ocrs, src_width, src_height, *data.bounds)
-
-#     if data.nodata is None:
-#         nodata = data.data.fill_value
-#     else:
-#         nodata = data.nodata
-
-#     odata = np.zeros((orows, ocolumns), dtype=data.data.dtype)
-#     odata, _ = reproject(source=data.data,
-#                          destination=odata,
-#                          src_transform=data.transform,
-#                          src_crs=icrs,
-#                          dst_transform=otransform,
-#                          dst_crs=ocrs,
-#                          src_nodata=nodata,
-#                          resampling=rasterio.enums.Resampling['bilinear'])
-
-#     data2 = Data()
-#     data2.data = odata
-#     data2.crs = ocrs
-#     data2.set_transform(transform=otransform)
-#     data2.data = data2.data.astype(data.data.dtype)
-#     data2.dataid = data.dataid
-#     data2.wkt = CRS.to_wkt(ocrs)
-#     data2.filename = data.filename[:-4]+'_prj'+data.filename[-4:]
-
-#     data2.data = np.ma.masked_equal(data2.data, nodata)
-#     data2.nodata = nodata
-#     data2.metadata = data.metadata
-
-#     return data2
 
 
 def fftprep(data):

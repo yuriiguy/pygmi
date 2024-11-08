@@ -50,7 +50,7 @@ from pygmi.misc import ProgressBarText, ContextModule, BasicModule
 from pygmi.raster.datatypes import Data, RasterMeta, bounds_intersection
 from pygmi.raster.iodefs import get_raster, export_raster
 from pygmi.raster.misc import histcomp, norm255, norm2, currentshader
-from pygmi.raster.misc import lstack
+from pygmi.raster.misc import lstack, cut_raster
 from pygmi.raster.reproj import data_reproject
 from pygmi.vector.dataprep import reprojxy
 from pygmi.rsense.emit import xr_to_pygmi, emit_xarray
@@ -372,27 +372,31 @@ class ImportBatch(BasicModule):
 
         allfiles = consolidate_aster_list(allfiles)
 
-        self.bands = {}
-        self.tnames = {}
-        self.filelist = []
-        for ifile in self.piter(allfiles):
-            dat = get_data(ifile, showlog=self.showlog,
-                           metaonly=True, piter=iter)
-            if dat is None:
-                continue
-            datm = RasterMeta()
-            datm.fromData(dat)
+        # self.bands = {}
+        # self.tnames = {}
+        # self.filelist = []
 
-            if datm.sensor == 'Generic':
-                if 'Generic' not in self.tnames:
-                    self.bands['Generic'] = []
-                self.bands['Generic'] = list(set(self.bands['Generic'] +
-                                                 datm.bands))
-            else:
-                self.bands[datm.sensor] = datm.bands
+        self.bands, self.tnames, self.filelist = files_to_rastermeta(allfiles,
+                                                                     self.piter,
+                                                                     self.showlog)
+        # for ifile in self.piter(allfiles):
+        #     dat = get_data(ifile, showlog=self.showlog,
+        #                    metaonly=True, piter=iter)
+        #     if dat is None:
+        #         continue
+        #     datm = RasterMeta()
+        #     datm.fromData(dat)
 
-            self.tnames[datm.sensor] = self.bands[datm.sensor].copy()
-            self.filelist.append(datm)
+        #     if datm.sensor == 'Generic':
+        #         if 'Generic' not in self.tnames:
+        #             self.bands['Generic'] = []
+        #         self.bands['Generic'] = list(set(self.bands['Generic'] +
+        #                                          datm.bands))
+        #     else:
+        #         self.bands[datm.sensor] = datm.bands
+
+        #     self.tnames[datm.sensor] = self.bands[datm.sensor].copy()
+        #     self.filelist.append(datm)
 
         self.cmb_sensor.disconnect()
         self.cmb_sensor.clear()
@@ -1419,8 +1423,54 @@ def export_batch(indata, odir, filt, tnames=None, piter=None,
                           compression=compression, showlog=showlog)
 
 
-def get_data(ifile, piter=None, showlog=print, tnames=None,
-             metaonly=False, bounds=None):
+def files_to_rastermeta(allfiles, piter=None, showlog=print):
+    """
+    Import files to a RasterMeta item.
+
+    Parameters
+    ----------
+    allfiles : list
+        List of filenames.
+    piter : function, optional
+        Progress bar iterable. Default is None.
+    showlog : function, optional
+        Routine to show text messages. The default is print.
+
+    Returns
+    -------
+    bands : dict
+        Bands
+    tnames : dict
+        Sensor types
+    filelist : list
+        List of RasterMeta data.
+
+    """
+    bands = {}
+    tnames = {}
+    filelist = []
+    for ifile in piter(allfiles):
+        dat = get_data(ifile, showlog=showlog, metaonly=True, piter=iter)
+        if dat is None:
+            continue
+        datm = RasterMeta()
+        datm.fromData(dat)
+
+        if datm.sensor == 'Generic':
+            if 'Generic' not in tnames:
+                bands['Generic'] = []
+            bands['Generic'] = list(set(bands['Generic'] + datm.bands))
+        else:
+            bands[datm.sensor] = datm.bands
+
+        tnames[datm.sensor] = bands[datm.sensor].copy()
+        filelist.append(datm)
+
+    return bands, tnames, filelist
+
+
+def get_data(ifile, piter=None, showlog=print, tnames=None, metaonly=False,
+             bounds=None):
     """
     Load a raster dataset off the disk using the rasterio libraries.
 
@@ -1521,10 +1571,12 @@ def get_from_rastermeta(ldata, piter=None, showlog=print, tnames=None,
     """
     Import data from a RasterMeta item.
 
+    For convenience a Data object is also accepted as input.
+
     Parameters
     ----------
-    ldata : RasterMeta or list
-        List of RasterMeta or single item.
+    ldata : RasterMeta or Data
+        RasterMeta item.
     piter : function, optional
         Progress bar iterable. Default is None.
     showlog : function, optional
@@ -1533,6 +1585,8 @@ def get_from_rastermeta(ldata, piter=None, showlog=print, tnames=None,
         list of band names to import, in order. The default is None.
     metaonly : bool, optional
         Retrieve only the metadata for the files. The default is False.
+    bounds : tuple
+        Bounds of data to import as (left, bottom, right, top)
 
     Returns
     -------
@@ -1540,15 +1594,21 @@ def get_from_rastermeta(ldata, piter=None, showlog=print, tnames=None,
         List of data.
 
     """
-    if tnames is None:
-        tnames = ldata.tnames
+    if isinstance(ldata, list):
+        if tnames is None:
+            dat = ldata
+        else:
+            dat = [i for i in ldata if i.dataid in tnames]
+        dat = cut_raster(dat, bounds)
+    else:
+        if tnames is None:
+            tnames = ldata.tnames
+        ifile = ldata.banddata[0].filename
+        dat = get_data(ifile, piter=piter, showlog=showlog, tnames=tnames,
+                       metaonly=metaonly, bounds=bounds)
 
-    ifile = ldata.banddata[0].filename
-    dat = get_data(ifile, piter=piter, showlog=showlog, tnames=tnames,
-                   metaonly=metaonly, bounds=bounds)
-
-    if ldata.to_sutm is True:
-        dat = utm_to_south(dat)
+        if ldata.to_sutm is True:
+            dat = utm_to_south(dat)
 
     return dat
 

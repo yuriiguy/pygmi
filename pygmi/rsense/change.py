@@ -505,7 +505,7 @@ def match_data(flist, showlog=print, piter=iter):
 
     Parameters
     ----------
-    flist : list of RasterMeta
+    flist : list of RasterMeta or Data lists
         List of batch file list data.
     showlog : function, optional
         Display information. The default is print.
@@ -524,7 +524,12 @@ def match_data(flist, showlog=print, piter=iter):
         showlog('You have more than two datasets being matched. '
                 'Only the first two will be used.')
 
-    tnames = list(set(flist[0].tnames).intersection(set(flist[1].tnames)))
+    if isinstance(flist[0], list):
+        tnames1 = [i.dataid for i in flist[0]]
+        tnames2 = [i.dataid for i in flist[1]]
+        tnames = list(set(tnames1).intersection(set(tnames2)))
+    else:
+        tnames = list(set(flist[0].tnames).intersection(set(flist[1].tnames)))
 
     dat1 = get_from_rastermeta(flist[0], piter=piter, showlog=showlog,
                                tnames=tnames)

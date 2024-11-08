@@ -33,6 +33,9 @@ from matplotlib.pyplot import colormaps
 from pyproj.crs import CRS
 import rasterio
 from rasterio.warp import reproject
+from rasterio.mask import mask as riomask
+import geopandas as gpd
+from shapely import Polygon
 
 from pygmi.misc import ProgressBarText
 from pygmi.raster.datatypes import Data
@@ -155,6 +158,81 @@ def currentshader(data, cell=1., theta=np.pi/4., phi=-np.pi/4., alpha=1.0):
     R = np.ma.masked_invalid(ne.evaluate('((1-alpha)+alpha*Ps)*cosi/cosg2'))
 
     return R
+
+
+def cut_raster(data, ibnd, showlog=print, deepcopy=True):
+    """
+    Cut a raster dataset.
+
+    Parameters
+    ----------
+    data : list of PyGMI Data
+        PyGMI Dataset
+    ibnd : str or GeoDataFrame, or tuple of bounds
+        shapefile or GeoDataFrame used to cut data.
+    showlog : function, optional
+        Function for printing text. The default is print.
+    deepcopy : bool
+        Make a copy of the data array before use.
+
+    Returns
+    -------
+    data : list of PyGMI Data
+        PyGMI Dataset
+    """
+    if ibnd is None:
+        return data
+
+    if deepcopy is True:
+        data = [i.copy() for i in data]
+
+    if isinstance(ibnd, gpd.GeoDataFrame):
+        gdf = ibnd
+    elif isinstance(ibnd, list) or isinstance(ibnd, tuple):
+        x0, y0, x1, y1 = ibnd
+        poly = Polygon([(x0, y0), (x1, y0), (x1, y1), (x0, y1), (x0, y0)])
+        gdf = gpd.GeoDataFrame({'geometry': [poly]})
+    else:
+        try:
+            gdf = gpd.read_file(ibnd)
+        except:
+            showlog('There was a problem importing the shapefile. Please make '
+                    'sure you have at all the individual files which make up '
+                    'the shapefile.')
+            return None
+
+    gdf = gdf.to_crs(data[0].crs)
+    gdf = gdf[gdf.geometry != None]
+
+    if 'Polygon' not in gdf.geom_type.iloc[0]:
+        showlog('You need a polygon in that shape file')
+        return None
+
+    for idata in data:
+        # Convert the layer extent to image pixel coordinates
+        dext = idata.bounds
+        lext = gdf['geometry'].total_bounds
+
+        if ((dext[0] > lext[2]) or (dext[2] < lext[0])
+                or (dext[1] > lext[3]) or (dext[3] < lext[1])):
+
+            showlog('The shapefile is not in the same area as the raster '
+                    'dataset. Please check its coordinates and make sure its '
+                    'projection is the same as the raster dataset')
+            return None
+
+        # This section converts PolygonZ to Polygon, and takes first polygon.
+        coords = gdf['geometry']
+
+        dat, trans = riomask(idata.to_mem(), coords, crop=True)
+
+        idata.data = np.ma.masked_equal(dat.squeeze(), idata.nodata)
+
+        idata.set_transform(transform=trans)
+
+    # data = trim_raster(data)
+
+    return data
 
 
 def histcomp(img, nbr_bins=None, perc=5., uperc=None):

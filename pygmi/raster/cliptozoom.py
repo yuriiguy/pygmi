@@ -39,7 +39,7 @@ import geopandas as gpd
 
 from pygmi.misc import frm, BasicModule
 from pygmi.raster.modest_image import imshow
-from pygmi.raster.dataprep import cut_raster
+from pygmi.raster.misc import cut_raster
 
 
 class MyMplCanvas(FigureCanvasQTAgg):
