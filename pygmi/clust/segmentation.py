@@ -206,7 +206,7 @@ class ImageSeg(BasicModule):
         self.saveobj(self.le_eps)
         self.saveobj(self.cb_dbscan)
 
-    def segment1(self, data, scale=500, wcolor=0.5, wcompact=0.5,
+    def segment1(self, data, *, scale=500, wcolor=0.5, wcompact=0.5,
                  doshape=True):
         """
         Segment Part 1.
@@ -258,7 +258,8 @@ class ImageSeg(BasicModule):
         self.showlog('merging...')
 
         omap = self._segment2(omap, olist, slist, mlist, nlist, bands,
-                              doshape, wcompact, wcolor, scale)
+                              doshape=doshape, wcompact=wcompact,
+                              wcolor=wcolor, scale=scale)
 
         self.showlog('renumbering...')
         tmp = np.unique(omap)
@@ -268,8 +269,8 @@ class ImageSeg(BasicModule):
 
         return omap.astype(int)
 
-    def _segment2(self, omap, olist, slist, mlist, nlist, bands, doshape,
-                  wcompact, wcolor, scale):
+    def _segment2(self, omap, olist, slist, mlist, nlist, bands, *,
+                  doshape=True, wcompact=0.5, wcolor=0.5, scale=500):
         """
         Segment Part 2.
 

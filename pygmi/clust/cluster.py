@@ -567,7 +567,7 @@ def _test_marinda2():
     import sys
     import matplotlib.pyplot as plt
     from pygmi.raster.iodefs import get_raster
-    from pygmi.raster.ginterp import norm2
+    from pygmi.raster.misc import norm2
 
     # Import Data
     ifile = r"D:\Workdata\testdata.hdr"

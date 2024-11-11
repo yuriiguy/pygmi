@@ -285,7 +285,7 @@ class IGRF(BasicModule):
         self.saveobj(self.cmb_mag)
 
 
-def calc_igrf(data, sdate, alt=100, wkt=None, igrfonly=True, piter=iter,
+def calc_igrf(data, sdate, *, alt=100, wkt=None, igrfonly=True, piter=iter,
               showlog=print):
     """
     Calculate IGRF.

@@ -159,7 +159,7 @@ class MyMplCanvas(FigureCanvasQTAgg):
 
         self.figure.canvas.draw()
 
-    def update_hexbin(self, data1, data2, xlbl='Time', ylbl='ML',
+    def update_hexbin(self, data1, data2, *, xlbl='Time', ylbl='ML',
                       xbin=None, xrng=None):
         """
         Update the hexbin plot.
@@ -234,7 +234,7 @@ class MyMplCanvas(FigureCanvasQTAgg):
 
         self.figure.canvas.draw()
 
-    def update_hist(self, data1, xlbl='Data Value',
+    def update_hist(self, data1, *, xlbl='Data Value',
                     ylbl='Number of Observations', bins='doane', rng=None):
         """
         Update the histogram plot.
@@ -783,16 +783,16 @@ class PlotQC(GraphWindow):
 
         i = self.cmb_1.currentText()
         if i == 'Hour Histogram':
-            self.mmc.update_hist(self.datd['1_hour'], 'Hour', bins=24,
+            self.mmc.update_hist(self.datd['1_hour'], xlbl='Hour', bins=24,
                                  rng=(-0.5, 23.5))
         elif i == 'Month Histogram':
-            self.mmc.update_hist(self.datd['1_month'], 'Month', bins=12,
+            self.mmc.update_hist(self.datd['1_month'], xlbl='Month', bins=12,
                                  rng=(0.5, 12.5))
         elif i == 'Year Histogram':
             bins = max(self.datd['1_year']) - min(self.datd['1_year']) + 1
             bmin = np.nanmin(self.datd['1_year'])-0.5
             bmax = np.nanmax(self.datd['1_year'])+0.5
-            self.mmc.update_hist(self.datd['1_year'], 'Year', bins=bins,
+            self.mmc.update_hist(self.datd['1_year'], xlbl='Year', bins=bins,
                                  rng=(bmin, bmax))
         elif i == 'Number of Stations':
             if np.isnan(self.datd['1_number_of_stations_used']).all():
@@ -805,17 +805,17 @@ class PlotQC(GraphWindow):
             bins = np.unique(self.datd['1_number_of_stations_used']).size
 
             self.mmc.update_hist(self.datd['1_number_of_stations_used'],
-                                 i, bins=bins, rng=(bmin, bmax))
+                                 xlbl=i, bins=bins, rng=(bmin, bmax))
         elif i == 'RMS of time residuals':
             rts = np.array(self.datd['1_rms_of_time_residuals'])
-            self.mmc.update_hist(rts, i+' (sec)')
+            self.mmc.update_hist(rts, xlbl=i+' (sec)')
         elif i == 'ML vs Time':
             self.mmc.update_hexbin(self.datd['1_ML_time'], self.datd['1_ML'],
-                                   'Time (Hours)', 'ML',
+                                   xlbl='Time (Hours)', ylbl='ML',
                                    xbin=25, xrng=(-0.5, 24.5))
         elif i == 'ML vs Year':
             self.mmc.update_hexbin(self.datd['1_ML_year'], self.datd['1_ML'],
-                                   'Year', 'ML')
+                                   xlbl='Year', ylbl='ML')
         elif i == 'Error Ellipse':
             self.btn_saveshp.show()
             self.mmc.update_ellipse(self.datd, self.indata['Seis'])
@@ -823,11 +823,12 @@ class PlotQC(GraphWindow):
             self.btn_saveshp.show()
             self.mmc.update_ellipse(self.datd, self.indata['Seis'], True)
         elif i == 'GAP':
-            self.mmc.update_hist(self.datd['E_gap'], i+' (°)')
+            self.mmc.update_hist(self.datd['E_gap'], xlbl=i+' (°)')
         elif i == 'Longitude Error':
-            self.mmc.update_hist(self.datd['E_longitude_error'], i+' (km)')
+            self.mmc.update_hist(self.datd['E_longitude_error'],
+                                 xlbl=i+' (km)')
         elif i == 'Latitude Error':
-            self.mmc.update_hist(self.datd['E_latitude_error'], i+' (km)')
+            self.mmc.update_hist(self.datd['E_latitude_error'], xlbl=i+' (km)')
         elif i == 'b-Value':
             self.mmc.update_bvalue(self.datd['1_ML'])
         elif i == 'P-Phase Residuals':

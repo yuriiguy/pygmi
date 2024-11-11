@@ -198,7 +198,7 @@ class ImportData(BasicModule):
                                                         nval)
             if not ok:
                 nval = 0.0
-            dat = get_raster(self.ifile, nval, piter=self.piter,
+            dat = get_raster(self.ifile, nval=nval, piter=self.piter,
                              showlog=self.showlog)
         else:
             dat = get_raster(self.ifile, piter=self.piter,
@@ -456,7 +456,7 @@ def get_ascii(ifile):
     return dat
 
 
-def get_raster(ifile, nval=None, piter=None, showlog=print,
+def get_raster(ifile, *, nval=None, piter=None, showlog=print,
                iraster=None, driver=None, bounds=None,
                tnames=None, metaonly=False, out_shape=None):
     """
@@ -476,8 +476,8 @@ def get_raster(ifile, nval=None, piter=None, showlog=print,
     showlog : function, optional
         Routine to show text messages. The default is print.
     iraster : None or tuple
-        Incremental raster import, to import a section of a file. The tuple is
-        (xoff, yoff, xsize, ysize)
+        Incremental raster import, to import a section of a file.
+        The tuple is (xoff, yoff, xsize, ysize). The default is None.
     driver : str
         GDAL raster driver name. The default is None.
     bounds : tuple
@@ -660,8 +660,8 @@ def get_raster(ifile, nval=None, piter=None, showlog=print,
             cols = dataset.width
             rows = dataset.height
             bands = dataset.count
-            datin = get_bil(ifile, bands, cols, rows, dtype, piter, iraster,
-                            interleave)
+            datin = get_bil(ifile, bands, cols, rows, dtype, piter=piter,
+                            iraster=iraster, interleave=interleave)
 
     with rasterio.open(ifile) as dataset:
         for i in piter(range(dataset.count)):
@@ -704,6 +704,8 @@ def get_raster(ifile, nval=None, piter=None, showlog=print,
             # Set Null Value
             if nval is None:
                 nval = dataset.nodata
+            if dtype == 'float32':
+                nval = np.float32(nval)
 
             if nval is not None and np.isnan(nval):
                 nval = None
@@ -799,7 +801,7 @@ def get_raster(ifile, nval=None, piter=None, showlog=print,
     return dat
 
 
-def get_bil(ifile, bands, cols, rows, dtype, piter, iraster=None,
+def get_bil(ifile, bands, cols, rows, dtype, *, piter=iter, iraster=None,
             interleave='LINE'):
     """
     Get BIL format file.
@@ -819,7 +821,12 @@ def get_bil(ifile, bands, cols, rows, dtype, piter, iraster=None,
     dtype : data type
         Data type.
     piter : function
-        progress bar iterable
+        progress bar iterable.
+    iraster : None or tuple
+        Incremental raster import, to import a section of a file.
+        The tuple is (xoff, yoff, xsize, ysize). The default is None.
+    interleave : str
+        Band interleave. Default is 'LINE'
 
     Returns
     -------
@@ -1228,19 +1235,19 @@ class ExportData(ContextModule):
         if filt == 'Surfer grid (*.grd)':
             self.export_surfer(data)
         if filt == 'ERDAS Imagine (*.img)':
-            export_raster(self.ofile, data, 'HFA', piter=self.piter,
+            export_raster(self.ofile, data, drv='HFA', piter=self.piter,
                           showlog=self.showlog)
         if filt == 'ERMapper (*.ers)':
-            export_raster(self.ofile, data, 'ERS', piter=self.piter,
+            export_raster(self.ofile, data, drv='ERS', piter=self.piter,
                           showlog=self.showlog)
         if filt == 'SAGA binary grid (*.sdat)':
             if len(data) > 1:
                 for i, dat in enumerate(data):
                     file_out = self.get_filename(dat, 'sdat')
-                    export_raster(file_out, [dat], 'SAGA', piter=self.piter,
+                    export_raster(file_out, [dat], drv='SAGA', piter=self.piter,
                                   showlog=self.showlog)
             else:
-                export_raster(self.ofile, data, 'SAGA', piter=self.piter,
+                export_raster(self.ofile, data, drv='SAGA', piter=self.piter,
                               showlog=self.showlog,
                               bandsort=self.cb_bandsort.isChecked())
         if 'GeoTIFF' in filt:
@@ -1250,13 +1257,13 @@ class ExportData(ContextModule):
                 compression = 'DEFLATE'
             else:
                 compression = 'NONE'
-            export_raster(self.ofile, data, 'GTiff', piter=self.piter,
+            export_raster(self.ofile, data, drv='GTiff', piter=self.piter,
                           compression=compression, showlog=self.showlog)
         if filt == 'ENVI (*.hdr)':
-            export_raster(self.ofile, data, 'ENVI', piter=self.piter,
+            export_raster(self.ofile, data, drv='ENVI', piter=self.piter,
                           showlog=self.showlog)
         if filt == 'ArcGIS BIL (*.bil)':
-            export_raster(self.ofile, data, 'EHdr', piter=self.piter,
+            export_raster(self.ofile, data, drv='EHdr', piter=self.piter,
                           showlog=self.showlog)
 
         self.showlog('Export Data Finished!')
@@ -1355,7 +1362,7 @@ class ExportData(ContextModule):
             k.data = k.data.filled(1.701410009187828e+38)
             k.nodata = 1.701410009187828e+38
 
-            export_raster(file_out, [k], 'GS7BG', piter=self.piter)
+            export_raster(file_out, [k], drv='GS7BG', piter=self.piter)
 
     def export_ascii(self, data):
         """
@@ -1486,8 +1493,7 @@ class ExportData(ContextModule):
         self.le_ofile.setText(self.ofile)
 
 
-
-def export_raster(ofile, dat, drv='GTiff', piter=None, compression='NONE',
+def export_raster(ofile, dat, *, drv='GTiff', piter=None, compression='NONE',
                   bandsort=True, showlog=print, updatestats=True):
     """
     Export to rasterio format.
@@ -1523,7 +1529,7 @@ def export_raster(ofile, dat, drv='GTiff', piter=None, compression='NONE',
     else:
         dat2 = dat
 
-    data = lstack(dat2, piter, nodeepcopy=True)
+    data = lstack(dat2, piter=piter, nodeepcopy=True)
 
     # Sort in band order.
     if bandsort is True:
@@ -1806,7 +1812,10 @@ def _filespeedtest():
 
     # dat = get_ascii(ifile)
 
-    dataset = get_raster(ifile, metaonly=False)
+    dataset = get_raster(ifile)
+
+    print(dataset[0].data.max())
+    return
 
     getinfo('Start')
 

@@ -303,7 +303,7 @@ class BeachBall(BasicModule):
             pwidth = self.mmc.pwidth*idat[-1]
             xxx, yyy, xxx2, yyy2 = beachball(np1, pxy[0], pxy[1], pwidth,
                                              self.mmc.isgeog,
-                                             self.showlog)
+                                             showlog=self.showlog)
 
             pvert1 = np.transpose([yyy, xxx])
             pvert0 = np.transpose([xxx2, yyy2])
@@ -412,7 +412,7 @@ class BeachBall(BasicModule):
         self.saveobj(self.rb_proj)
 
 
-def beachball(fm, centerx, centery, diam, isgeog, showlog=print):
+def beachball(fm, centerx, centery, diam, isgeog, *, showlog=print):
     """
     Beachball.
 

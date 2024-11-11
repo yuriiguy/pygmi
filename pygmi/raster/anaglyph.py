@@ -25,7 +25,7 @@
 """Anaglyph routine."""
 
 from PyQt5 import QtWidgets, QtCore
-from scipy import ndimage
+# from scipy import ndimage
 import numpy as np
 from matplotlib import colormaps
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
@@ -34,6 +34,7 @@ from matplotlib import collections as mc
 from matplotlib.backends.backend_qt5 import NavigationToolbar2QT
 
 from pygmi.misc import frm, ContextModule
+from pygmi.raster.misc import norm2, currentshader, histcomp
 
 
 class MyMplCanvas(FigureCanvasQTAgg):
@@ -112,6 +113,9 @@ class MyMplCanvas(FigureCanvasQTAgg):
 
         lines = []
         for i, lvl in enumerate(asegs):
+            if not lvl:
+                continue
+
             cnt = np.split(lvl.vertices, np.where(lvl.codes == 1)[0][1:])
             for j in cnt:
                 x1 = j[:, 0]
@@ -131,6 +135,8 @@ class MyMplCanvas(FigureCanvasQTAgg):
 
         lines = []
         for i, lvl in enumerate(asegs):
+            if not lvl:
+                continue
             cnt = np.split(lvl.vertices, np.where(lvl.codes == 1)[0][1:])
             for j in cnt:
                 x1 = j[:, 0]
@@ -158,7 +164,7 @@ class MyMplCanvas(FigureCanvasQTAgg):
 
         self.figure.canvas.draw()
 
-    def update_raster(self, data1, scale=7, rotang=10, atype='dubois',
+    def update_raster(self, data1, *, scale=7, rotang=10, atype='dubois',
                       cmap=colormaps['jet'], shade=False):
         """
         Update the raster plot.
@@ -495,14 +501,14 @@ class PlotAnaglyph(ContextModule):
             self.showlog('RGB images cannot be used in this module.')
             return
 
-        self.show()
-
         for i in data:
             self.cmb_1.addItem(i.dataid)
         self.change_all()
 
+        self.exec()
 
-def sunshade(data, azim=-np.pi/4., elev=np.pi/4., alpha=1, cell=100,
+
+def sunshade(data, *, azim=-np.pi/4., elev=np.pi/4., alpha=1, cell=100,
              cmap=colormaps['terrain']):
     """
     Perform Sunshading on data.
@@ -533,7 +539,7 @@ def sunshade(data, azim=-np.pi/4., elev=np.pi/4., alpha=1, cell=100,
 
     sunshader = currentshader(data, cell, elev, azim, alpha)
     snorm = norm2(sunshader)
-    pnorm = np.uint8(norm2(histcomp(data))*255)
+    pnorm, _, _ = np.uint8(norm2(histcomp(data))*255)
 
     colormap = cmap(pnorm)
     colormap[:, :, 0] = colormap[:, :, 0]*snorm
@@ -544,138 +550,138 @@ def sunshade(data, azim=-np.pi/4., elev=np.pi/4., alpha=1, cell=100,
     return colormap
 
 
-def norm2(dat, datmin=None, datmax=None):
-    """
-    Normalise vector.
+# def norm2(dat, datmin=None, datmax=None):
+#     """
+#     Normalise vector.
 
-    Parameters
-    ----------
-    dat : numpy array
-        Vector to be normalised.
-    datmin : float, optional
-        Minimum dat value. The default is None.
-    datmax : float, optional
-        Maximum dat value. The default is None.
+#     Parameters
+#     ----------
+#     dat : numpy array
+#         Vector to be normalised.
+#     datmin : float, optional
+#         Minimum dat value. The default is None.
+#     datmax : float, optional
+#         Maximum dat value. The default is None.
 
-    Returns
-    -------
-    numpy array
-        Normalised output data.
+#     Returns
+#     -------
+#     numpy array
+#         Normalised output data.
 
-    """
-    if datmin is None:
-        datmin = np.min(dat)
-    if datmax is None:
-        datmax = np.max(dat)
-    return (dat-datmin)/(datmax-datmin)
-
-
-def currentshader(data, cell, theta, phi, alpha):
-    """
-    Blinn shader.
-
-    Parameters
-    ----------
-    data : numpy array
-        input MxN data to be imaged.
-    cell : float
-        between 1 and 100 - controls sunshade detail.
-    theta : float
-        sun elevation (also called g in code below).
-    phi : float
-        azimuth.
-    alpha : float
-        how much incident light is reflected.
-
-    Returns
-    -------
-    R : numpy array
-        Output data.
-
-    """
-    cdy = np.array([[1., 2., 1.], [0., 0., 0.], [-1., -2., -1.]])
-    cdx = np.array([[1., 0., -1.], [2., 0., -2.], [1., 0., -1.]])
-
-    dzdx = ndimage.convolve(data, cdx)  # Use convolve: matrix filtering
-    dzdy = ndimage.convolve(data, cdy)  # 'valid' gets reduced array
-
-    dzdx = dzdx/8.
-    dzdy = dzdy/8.
-
-    pinit = dzdx
-    qinit = dzdy
-
-    # Update cell
-    p = pinit/cell
-    q = qinit/cell
-    sqrt_1p2q2 = np.sqrt(1+p**2+q**2)
-
-    # Update angle
-    cosg2 = np.cos(theta/2)
-    p0 = -np.cos(phi)*np.tan(theta)
-    q0 = -np.sin(phi)*np.tan(theta)
-    sqrttmp = 1+np.sqrt(1+p0**2+q0**2)
-    p1 = p0 / sqrttmp
-    q1 = q0 / sqrttmp
-
-    n = 2.0
-
-    cosi = ((1+p0*p+q0*q)/(sqrt_1p2q2*np.sqrt(1+p0**2+q0**2)))
-    coss = ((1+p1*p+q1*q)/(sqrt_1p2q2*np.sqrt(1+p1**2+q1**2)))
-    Ps = coss**n
-    R = ((1-alpha)+alpha*Ps)*cosi/cosg2
-    return R
+#     """
+#     if datmin is None:
+#         datmin = np.min(dat)
+#     if datmax is None:
+#         datmax = np.max(dat)
+#     return (dat-datmin)/(datmax-datmin)
 
 
-def histcomp(img, nbr_bins=256, perc=5.):
-    """
-    Histogram compaction.
+# def currentshader(data, cell, theta, phi, alpha):
+#     """
+#     Blinn shader.
 
-    Parameters
-    ----------
-    img : numpy masked array
-        Input data.
-    nbr_bins : int, optional
-        Number of bins. The default is 256.
-    perc : float, optional
-        Percentage to clip. The default is 5.
+#     Parameters
+#     ----------
+#     data : numpy array
+#         input MxN data to be imaged.
+#     cell : float
+#         between 1 and 100 - controls sunshade detail.
+#     theta : float
+#         sun elevation (also called g in code below).
+#     phi : float
+#         azimuth.
+#     alpha : float
+#         how much incident light is reflected.
 
-    Returns
-    -------
-    img2 : numpy array
-        Output data.
+#     Returns
+#     -------
+#     R : numpy array
+#         Output data.
 
-    """
-    tmp = img.compressed()
+#     """
+#     cdy = np.array([[1., 2., 1.], [0., 0., 0.], [-1., -2., -1.]])
+#     cdx = np.array([[1., 0., -1.], [2., 0., -2.], [1., 0., -1.]])
 
-    imhist, bins = np.histogram(tmp, nbr_bins)
+#     dzdx = ndimage.convolve(data, cdx)  # Use convolve: matrix filtering
+#     dzdy = ndimage.convolve(data, cdy)  # 'valid' gets reduced array
 
-    cdf = imhist.cumsum()  # cumulative distribution function
-    cdf = cdf / float(cdf[-1])  # normalize
+#     dzdx = dzdx/8.
+#     dzdy = dzdy/8.
 
-    perc = perc/100.
+#     pinit = dzdx
+#     qinit = dzdy
 
-    sindx = np.arange(nbr_bins)[cdf > perc][0]
-    eindx = np.arange(nbr_bins)[cdf < (1-perc)][-1]+1
-    svalue = bins[sindx]
-    evalue = bins[eindx]
+#     # Update cell
+#     p = pinit/cell
+#     q = qinit/cell
+#     sqrt_1p2q2 = np.sqrt(1+p**2+q**2)
 
-    scnt = perc*(nbr_bins-1)
-    scnt = min(scnt, sindx)
+#     # Update angle
+#     cosg2 = np.cos(theta/2)
+#     p0 = -np.cos(phi)*np.tan(theta)
+#     q0 = -np.sin(phi)*np.tan(theta)
+#     sqrttmp = 1+np.sqrt(1+p0**2+q0**2)
+#     p1 = p0 / sqrttmp
+#     q1 = q0 / sqrttmp
 
-    ecnt = perc*(nbr_bins-1)
-    ecnt = min(ecnt, nbr_bins-1-eindx)
+#     n = 2.0
 
-    img2 = np.empty_like(img, dtype=np.float32)
-    np.copyto(img2, img)
+#     cosi = ((1+p0*p+q0*q)/(sqrt_1p2q2*np.sqrt(1+p0**2+q0**2)))
+#     coss = ((1+p1*p+q1*q)/(sqrt_1p2q2*np.sqrt(1+p1**2+q1**2)))
+#     Ps = coss**n
+#     R = ((1-alpha)+alpha*Ps)*cosi/cosg2
+#     return R
 
-    filt = np.ma.less(img2, svalue)
-    img2[filt] = svalue
 
-    filt = np.ma.greater(img2, evalue)
-    img2[filt] = evalue
+# def histcomp(img, nbr_bins=256, perc=5.):
+#     """
+#     Histogram compaction.
 
-    return img2
+#     Parameters
+#     ----------
+#     img : numpy masked array
+#         Input data.
+#     nbr_bins : int, optional
+#         Number of bins. The default is 256.
+#     perc : float, optional
+#         Percentage to clip. The default is 5.
+
+#     Returns
+#     -------
+#     img2 : numpy array
+#         Output data.
+
+#     """
+#     tmp = img.compressed()
+
+#     imhist, bins = np.histogram(tmp, nbr_bins)
+
+#     cdf = imhist.cumsum()  # cumulative distribution function
+#     cdf = cdf / float(cdf[-1])  # normalize
+
+#     perc = perc/100.
+
+#     sindx = np.arange(nbr_bins)[cdf > perc][0]
+#     eindx = np.arange(nbr_bins)[cdf < (1-perc)][-1]+1
+#     svalue = bins[sindx]
+#     evalue = bins[eindx]
+
+#     scnt = perc*(nbr_bins-1)
+#     scnt = min(scnt, sindx)
+
+#     ecnt = perc*(nbr_bins-1)
+#     ecnt = min(ecnt, nbr_bins-1-eindx)
+
+#     img2 = np.empty_like(img, dtype=np.float32)
+#     np.copyto(img2, img)
+
+#     filt = np.ma.less(img2, svalue)
+#     img2[filt] = svalue
+
+#     filt = np.ma.greater(img2, evalue)
+#     img2[filt] = evalue
+
+#     return img2
 
 
 def anaglyph(red, blue, atype='dubois'):
@@ -812,3 +818,25 @@ def rot_and_clean(x, y, z, rotang=5, rtype='red'):
     zmap = np.ma.masked_equal(zmap, 0)
 
     return zmap
+
+
+def _testfn():
+    """Test."""
+    import sys
+    from pygmi.raster.iodefs import get_raster
+
+    app = QtWidgets.QApplication(sys.argv)
+
+    ifile = r"D:\workdata\PyGMI Test Data\Raster\testdata.hdr"
+
+    dataset = get_raster(ifile)
+
+    # breakpoint()
+
+    tmp = PlotAnaglyph()
+    tmp.indata['Raster'] = dataset
+    tmp.run()
+
+
+if __name__ == "__main__":
+    _testfn()

@@ -38,7 +38,7 @@ from scipy.interpolate import griddata
 from scipy.ndimage import distance_transform_edt
 
 
-def minc(x, y, z, dxy, showlog=print, extent=None, bdist=None,
+def minc(x, y, z, dxy, *, showlog=print, extent=None, bdist=None,
          maxiters=100):
     """
     Minimum Curvature Gridding.

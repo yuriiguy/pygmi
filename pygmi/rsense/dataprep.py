@@ -173,8 +173,8 @@ class TopoCorrect(BasicModule):
             else:
                 data.append(i)
 
-        data = lstack(data, self.piter, showlog=self.showlog)
-        dem = lstack(data+[dem], self.piter, showlog=self.showlog,
+        data = lstack(data, piter=self.piter, showlog=self.showlog)
+        dem = lstack(data+[dem], piter=self.piter, showlog=self.showlog,
                      masterid=data[0].dataid)
 
         dem = dem.pop(-1)
@@ -368,7 +368,7 @@ class Sen2Cor(BasicModule):
         return True
 
 
-def c_correction(data, dem, azimuth, zenith, showlog=print, piter=iter):
+def c_correction(data, dem, azimuth, zenith, *, showlog=print, piter=iter):
     """
     Calculate C correction.
 
@@ -450,7 +450,7 @@ def _testfn2():
 def _testfn():
     """Test routine topo."""
     import matplotlib.pyplot as plt
-    from pygmi.raster.misc import norm2, lstack
+    from pygmi.raster.misc import norm2
     # ifile1 = r"D:\Landslides\JTNdem.tif"
     # ifile2 = r"D:\Landslides\GeoTiff\S2B_T36JTN_R092_20220428_stack.tif"
     # ifile2 = r"D:\Landslides\test.tif"

@@ -271,7 +271,7 @@ def composite(idir, dreq=10, mean=None, showlog=print, piter=None):
     return datfin
 
 
-def import_and_score(ifile, dreq, mean, std, showlog=print, piter=None):
+def import_and_score(ifile, dreq, mean, std, *, showlog=print, piter=None):
     """
     Import data and score it.
 

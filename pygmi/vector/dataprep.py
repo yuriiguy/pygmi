@@ -341,7 +341,8 @@ class DataGrid(BasicModule):
         y = data2.geometry.y.values[filt]
         z = data2[dataid].values[filt]
 
-        dat = gridxyz(x, y, z, dxy, nullvalue, method, bdist, self.showlog)
+        dat = gridxyz(x, y, z, dxy, nullvalue=nullvalue, method=method,
+                      bdist=bdist, showlog=self.showlog)
         dat.dataid = dataid
         dat.crs = data2.crs
 
@@ -1004,7 +1005,7 @@ def filesplit(ifile, num, mode='bytes', showlog=print, piter=None):
                     writer.write(txt)
 
 
-def gridxyz(x, y, z, dxy, nullvalue=1e+20, method='Nearest Neighbour',
+def gridxyz(x, y, z, dxy, *, nullvalue=1e+20, method='Nearest Neighbour',
             bdist=4.0, showlog=print):
     """
     Grid xyz data.
@@ -1203,7 +1204,7 @@ def maptobounds(mapsheet, crs_to=None, showlog=print):
     return bounds
 
 
-def quickgrid(x, y, z, dxy, numits=4, showlog=print):
+def quickgrid(x, y, z, dxy, *, numits=4, showlog=print):
     """
     Do a quick grid.
 

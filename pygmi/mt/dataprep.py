@@ -1251,7 +1251,8 @@ class MyMplCanvas2(FigureCanvasQTAgg):
         fig = Figure(layout='constrained')
         super().__init__(fig)
 
-    def update_line(self, x, pdata, rdata, depths=None, res=None, title=None):
+    def update_line(self, x, pdata, rdata, *,
+                    depths=None, res=None, title=None):
         """
         Update the plot from data.
 
@@ -1684,7 +1685,8 @@ class Occam1D(BasicModule):
         rdata = [oc1d.data['resxy'][0], oc1d.data['resxy'][2]]
         pdata = [oc1d.data['phasexy'][0], oc1d.data['phasexy'][2]]
 
-        self.mmc.update_line(x, pdata, rdata, depths, res, title)
+        self.mmc.update_line(x, pdata, rdata, depths=depths, res=res,
+                             title=title)
 
     def settings(self, nodialog=False):
         """

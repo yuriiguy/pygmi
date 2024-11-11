@@ -1184,7 +1184,7 @@ class PlotVector(GraphWindow):
         self.change_band()
 
 
-def heatmap(data, row_labels, col_labels, ax,
+def heatmap(data, row_labels, col_labels, ax, *,
             cbar_kw=None, cbarlabel="", **kwargs):
     """
     Create a heatmap from a numpy array and two lists of labels.

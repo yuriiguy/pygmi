@@ -220,7 +220,7 @@ class SatRatios(BasicModule):
                 ofile = set_export_filename(dat, odir, 'ratio')
 
                 self.showlog('Exporting to '+ofile)
-                export_raster(ofile, datfin, 'GTiff', piter=self.piter,
+                export_raster(ofile, datfin, drv='GTiff', piter=self.piter,
                               compression='DEFLATE', showlog=self.showlog)
                 self.outdata['Raster'] = datfin
 

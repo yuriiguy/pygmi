@@ -323,7 +323,7 @@ def test_io_rasterio(smalldata, ext, drv):
     """Tests IO for rasterio files."""
     ofile = tempfile.gettempdir() + '\\iotest'+ext
 
-    iodefs.export_raster(ofile, [smalldata], drv)
+    iodefs.export_raster(ofile, [smalldata], drv=drv)
     dat2 = iodefs.get_raster(ofile)
 
     # Cleanup files

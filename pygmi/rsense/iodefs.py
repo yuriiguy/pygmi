@@ -155,7 +155,8 @@ class ImportData(BasicModule):
 
         os.chdir(os.path.dirname(self.ifile))
 
-        dat = get_data(self.ifile, self.piter, self.showlog, tnames)
+        dat = get_data(self.ifile, piter=self.piter, showlog=self.showlog,
+                       tnames=tnames)
 
         if dat is None:
             QtWidgets.QMessageBox.warning(self.parent, 'Error',
@@ -187,8 +188,8 @@ class ImportData(BasicModule):
 
         self.le_sfile.setText(self.ifile)
 
-        self.indata['Raster'] = get_data(self.ifile, self.piter,
-                                         self.showlog, metaonly=True)
+        self.indata['Raster'] = get_data(self.ifile, piter=self.piter,
+                                         showlog=self.showlog, metaonly=True)
 
         if self.indata['Raster'] is None:
             self.showlog('Error: could not import data.')
@@ -372,32 +373,9 @@ class ImportBatch(BasicModule):
 
         allfiles = consolidate_aster_list(allfiles)
 
-        # self.bands = {}
-        # self.tnames = {}
-        # self.filelist = []
-
         self.bands, self.tnames, self.filelist = files_to_rastermeta(allfiles,
                                                                      self.piter,
                                                                      self.showlog)
-        # for ifile in self.piter(allfiles):
-        #     dat = get_data(ifile, showlog=self.showlog,
-        #                    metaonly=True, piter=iter)
-        #     if dat is None:
-        #         continue
-        #     datm = RasterMeta()
-        #     datm.fromData(dat)
-
-        #     if datm.sensor == 'Generic':
-        #         if 'Generic' not in self.tnames:
-        #             self.bands['Generic'] = []
-        #         self.bands['Generic'] = list(set(self.bands['Generic'] +
-        #                                          datm.bands))
-        #     else:
-        #         self.bands[datm.sensor] = datm.bands
-
-        #     self.tnames[datm.sensor] = self.bands[datm.sensor].copy()
-        #     self.filelist.append(datm)
-
         self.cmb_sensor.disconnect()
         self.cmb_sensor.clear()
         self.cmb_sensor.addItems(self.bands.keys())
@@ -1034,7 +1012,7 @@ class ExportBatch(ContextModule):
 
         self.showlog('Export Data Busy...')
 
-        export_batch(self.indata, odir, filt, tnames, piter=self.piter,
+        export_batch(self.indata, odir, filt, tnames=tnames, piter=self.piter,
                      showlog=self.showlog, otype=otype, sunfile=sunfile,
                      cell=cell, alpha=alpha)
 
@@ -1331,7 +1309,7 @@ def etree_to_dict(t):
     return d
 
 
-def export_batch(indata, odir, filt, tnames=None, piter=None,
+def export_batch(indata, odir, filt, *, tnames=None, piter=None,
                  showlog=print, otype=None, sunfile=None,
                  cell=25., alpha=.75):
     """
@@ -1415,11 +1393,11 @@ def export_batch(indata, odir, filt, tnames=None, piter=None,
         if otype == 'RGB':
             odat = get_ternary(odat, sunfile=sunfile, cell=cell, alpha=alpha,
                                piter=piter, showlog=showlog)
-            export_raster(ofile, odat, 'GTiff', piter=piter,
+            export_raster(ofile, odat, drv='GTiff', piter=piter,
                           bandsort=False, updatestats=False,
                           showlog=showlog)
         else:
-            export_raster(ofile, odat, ofilt, piter=piter,
+            export_raster(ofile, odat, drv=ofilt, piter=piter,
                           compression=compression, showlog=showlog)
 
 
@@ -1469,7 +1447,7 @@ def files_to_rastermeta(allfiles, piter=None, showlog=print):
     return bands, tnames, filelist
 
 
-def get_data(ifile, piter=None, showlog=print, tnames=None, metaonly=False,
+def get_data(ifile, *, piter=None, showlog=print, tnames=None, metaonly=False,
              bounds=None):
     """
     Load a raster dataset off the disk using the rasterio libraries.
@@ -1534,7 +1512,8 @@ def get_data(ifile, piter=None, showlog=print, tnames=None, metaonly=False,
           ('S2A_' in bfile and ext == '.zip') or
           ('S2B_' in bfile and ext == '.zip') or
           (ext == '.safe')):
-        dat = get_sentinel2(ifile, piter, showlog, tnames, metaonly, bounds)
+        dat = get_sentinel2(ifile, piter=piter, showlog=showlog, tnames=tnames,
+                            metaonly=metaonly, bounds=bounds)
     elif (ext == '.xml' and 'DIM' in ifile):
         dat = get_spot(ifile, piter, showlog, tnames, metaonly)
     elif (('MOD' in bfile or 'MCD' in bfile) and ext == '.hdf' and
@@ -1566,7 +1545,7 @@ def get_data(ifile, piter=None, showlog=print, tnames=None, metaonly=False,
     return dat
 
 
-def get_from_rastermeta(ldata, piter=None, showlog=print, tnames=None,
+def get_from_rastermeta(ldata, *, piter=None, showlog=print, tnames=None,
                         metaonly=False, bounds=None):
     """
     Import data from a RasterMeta item.
@@ -2581,7 +2560,7 @@ def get_sentinel1(ifile, piter=None, showlog=print, tnames=None,
     return dat
 
 
-def get_sentinel2(ifile, piter=None, showlog=print, tnames=None,
+def get_sentinel2(ifile, *, piter=None, showlog=print, tnames=None,
                   metaonly=False, bounds=None):
     """
     Get Sentinel-2 Data.

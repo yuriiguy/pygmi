@@ -783,7 +783,8 @@ class ProcFeatures(BasicModule):
 
                 dat = get_raster(ifile)
                 datfin = calcfeatures(dat, mineral, self.feature, self.ratio,
-                                      product, cryst, rfilt, piter=self.piter)
+                                      product, cryst=cryst,
+                                      rfilt=rfilt, piter=self.piter)
 
                 ofile = (os.path.basename(ifile).split('.')[0] + '_' +
                          mineral.replace(' ', '_') + '.tif')
@@ -793,13 +794,14 @@ class ProcFeatures(BasicModule):
                                  '. No data to export.')
                 else:
                     self.showlog('Exporting '+os.path.basename(ofile))
-                    export_raster(ofile, datfin, 'GTiff', piter=self.piter,
+                    export_raster(ofile, datfin, drv='GTiff', piter=self.piter,
                                   showlog=self.showlog)
 
         elif 'Raster' in self.indata:
             dat = self.indata['Raster']
             datfin = calcfeatures(dat, mineral, self.feature, self.ratio,
-                                  product, cryst, rfilt, piter=self.piter)
+                                  product, cryst=cryst, rfilt=rfilt,
+                                  piter=self.piter)
 
         if np.all(datfin[0].data.mask):
             QtWidgets.QMessageBox.warning(self.parent, 'Warning',
@@ -812,8 +814,8 @@ class ProcFeatures(BasicModule):
         return True
 
 
-def calcfeatures(dat, mineral, feature, ratio, product, cryst=None, rfilt=True,
-                 piter=iter):
+def calcfeatures(dat, mineral, feature, ratio, product, *, cryst=None,
+                 rfilt=True, piter=iter):
     """
     Calculate feature dataset.
 

@@ -614,7 +614,7 @@ class Mod3dDisplay(ContextModule):
                 c[1:-1, 1:-1, 1:-1] = cc
 
                 faces, vtx = MarchingCubes(xx, yy, zz, c, .1,
-                                           self.showlog)
+                                           showlog=self.showlog)
 
                 if vtx.size == 0:
                     self.lmod1.update_lith_list_reverse()
@@ -1374,7 +1374,7 @@ def normalize_v3(arr):
     return arr
 
 
-def MarchingCubes(x, y, z, c, iso, showlog=print):
+def MarchingCubes(x, y, z, c, iso, *, showlog=print):
     """
     Marching cubes.
 

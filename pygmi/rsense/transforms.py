@@ -226,7 +226,7 @@ class MNF(BasicModule):
 
                 dat = get_from_rastermeta(ifile, piter=self.piter,
                                           showlog=self.showlog)
-                odata, self.ev = mnf_calc(dat, ncmps, piter=self.piter,
+                odata, self.ev = mnf_calc(dat, ncmps=ncmps, piter=self.piter,
                                           showlog=self.showlog,
                                           noisetxt=noise,
                                           fwdonly=self.cb_fwdonly.isChecked())
@@ -234,12 +234,12 @@ class MNF(BasicModule):
                 ofile = set_export_filename(dat, odir, 'mnf')
 
                 self.showlog('Exporting '+os.path.basename(ofile))
-                export_raster(ofile, odata, 'GTiff', piter=self.piter,
+                export_raster(ofile, odata, drv='GTiff', piter=self.piter,
                               showlog=self.showlog)
 
         elif 'Raster' in self.indata:
             dat = self.indata['Raster']
-            odata, self.ev = mnf_calc(dat, ncmps, piter=self.piter,
+            odata, self.ev = mnf_calc(dat, ncmps=ncmps, piter=self.piter,
                                       showlog=self.showlog,
                                       noisetxt=noise,
                                       fwdonly=self.cb_fwdonly.isChecked())
@@ -436,7 +436,7 @@ class PCA(BasicModule):
                 ofile = set_export_filename(dat, odir, 'pca')
 
                 self.showlog('Exporting '+os.path.basename(ofile))
-                export_raster(ofile, odata, 'GTiff', piter=self.piter,
+                export_raster(ofile, odata, drv='GTiff', piter=self.piter,
                               showlog=self.showlog)
 
         elif 'RasterFileList' in self.indata and fitlist is True:
@@ -536,7 +536,7 @@ def get_noise(x2d, mask, noisetype='', piter=iter):
     return nevals, nevecs
 
 
-def mnf_calc(dat, ncmps=None, noisetxt='hv average', showlog=print, piter=iter,
+def mnf_calc(dat, *, ncmps=None, noisetxt='hv average', showlog=print, piter=iter,
              fwdonly=True):
     """
     MNF Calculation.
@@ -890,7 +890,7 @@ def pca_calc_fitlist(flist, ncmps=None,  showlog=print, piter=iter,
         ofile = set_export_filename(dat, odir, 'pca')
 
         showlog('Exporting '+os.path.basename(ofile))
-        export_raster(ofile, odata, 'GTiff', piter=piter, compression='ZSTD',
+        export_raster(ofile, odata, drv='GTiff', piter=piter, compression='ZSTD',
                       showlog=showlog)
 
     return odata, ev

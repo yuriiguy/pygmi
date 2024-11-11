@@ -350,9 +350,9 @@ class Data():
             y maximum. The default is None.
         transform : list of Affine, optional
             transform. The default is None.
-        iraster : list, optional
-            list containing offsets etc in event of cutting data. The default
-            is None.
+        iraster : None or tuple
+            Incremental raster import, to import a section of a file.
+            The tuple is (xoff, yoff, xsize, ysize). The default is None.
         rows : int, optional
             rows in dataset. The default is None.
         cols : int, optional

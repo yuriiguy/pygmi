@@ -188,7 +188,7 @@ def cut_raster(data, ibnd, showlog=print, deepcopy=True):
 
     if isinstance(ibnd, gpd.GeoDataFrame):
         gdf = ibnd
-    elif isinstance(ibnd, list) or isinstance(ibnd, tuple):
+    elif isinstance(ibnd, (list, tuple)):
         x0, y0, x1, y1 = ibnd
         poly = Polygon([(x0, y0), (x1, y0), (x1, y1), (x0, y1), (x0, y0)])
         gdf = gpd.GeoDataFrame({'geometry': [poly]})
@@ -357,7 +357,7 @@ def img2rgb(img, cbar=colormaps['jet']):
     return im2
 
 
-def lstack(dat, piter=None, dxy=None, showlog=print, commonmask=False,
+def lstack(dat, *, piter=None, dxy=None, showlog=print, commonmask=False,
            masterid=None, nodeepcopy=False, resampling='nearest',
            checkdataid=True):
     """

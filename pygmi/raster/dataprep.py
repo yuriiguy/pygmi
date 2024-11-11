@@ -36,10 +36,8 @@ import rasterio
 import rasterio.merge
 from pyproj.crs import CRS
 from rasterio.warp import calculate_default_transform
-from rasterio.mask import mask as riomask
 import geopandas as gpd
 from shapely import LineString
-from shapely import Polygon
 
 from pygmi import menu_default
 from pygmi.raster.datatypes import Data
@@ -414,7 +412,7 @@ class DataLayerStack(BasicModule):
         """
         dxy = self.dsb_dxy.value()
         self.dxy = dxy
-        dat = lstack(self.indata['Raster'], self.piter, dxy,
+        dat = lstack(self.indata['Raster'], piter=self.piter, dxy=dxy,
                      showlog=self.showlog,
                      commonmask=self.cb_cmask.isChecked())
         self.outdata['Raster'] = dat
@@ -668,10 +666,12 @@ class DataMerge(BasicModule):
             self.showlog('Value Error in nodata or resolution')
             return False
 
-        outdat = mosaic(self.indata, self.idir, bfile, bandstofiles,
-                        self.piter, self.showlog, self.singleband,
-                        self.forcetype, shifttomedian, self.tmpdir,
-                        nodata, self.method, res)
+        outdat = mosaic(self.indata, idir=self.idir, bfile=bfile,
+                        bandstofiles=bandstofiles, piter=self.piter,
+                        showlog=self.showlog, singleband=self.singleband,
+                        forcetype=self.forcetype, shifttomedian=shifttomedian,
+                        tmpdir=self.tmpdir, nodata=nodata, method=self.method,
+                        res=res)
 
         if outdat:
             self.outdata['Raster'] = outdat
@@ -869,7 +869,7 @@ class GetProf(BasicModule):
             self.showlog('You need lines in that shape file')
             return False
 
-        data = lstack(data, self.piter, showlog=self.showlog)
+        data = lstack(data, piter=self.piter, showlog=self.showlog)
         dxy = min(data[0].xdim, data[0].ydim)
         ogdf2 = None
 
@@ -1551,7 +1551,7 @@ def merge_max(merged_data, new_data, merged_mask, new_mask, index=None,
     merged_data[:] = tmp1
 
 
-def mosaic(dat, idir=None, bfile=None, bandstofiles=False, piter=iter,
+def mosaic(dat, *, idir=None, bfile=None, bandstofiles=False, piter=iter,
            showlog=print, singleband=False, forcetype=None,
            shifttomedian=False, tmpdir=None, nodata=None, method='first',
            res=None):
@@ -1805,7 +1805,7 @@ def mosaic(dat, idir=None, bfile=None, bandstofiles=False, piter=iter,
         outdat[-1].datetime = datetime
 
         if bandstofiles:
-            export_raster(ofile, outdat, 'GTiff', compression='DEFLATE',
+            export_raster(ofile, outdat, drv='GTiff', compression='DEFLATE',
                           showlog=showlog, piter=piter)
 
             del outdat

@@ -2007,8 +2007,9 @@ class PlotInterp(BasicModule):
         newimg[2].dataid = btext
         newimg[3].dataid = 'Alpha'
 
-        iodefs.export_raster(str(filename), newimg, 'GTiff', piter=self.piter,
-                             bandsort=False, updatestats=True,
+        iodefs.export_raster(str(filename), newimg, drv='GTiff',
+                             piter=self.piter, bandsort=False,
+                             updatestats=True,
                              showlog=self.showlog, compression='DEFLATE')
 
         # Section for colorbars
