@@ -29,7 +29,7 @@ import os
 
 import numpy as np
 import numexpr as ne
-from numba import jit
+from numba import njit
 from PyQt5 import QtWidgets, QtCore
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
@@ -1024,7 +1024,7 @@ def indexcalc(formula, dat):
     return out
 
 
-@jit(nopython=True)
+@njit
 def fproc(fdat, ptmp, dtmp, i1a, i2a, xdat, mtmp):
     """
     Feature process.
@@ -1061,7 +1061,7 @@ def fproc(fdat, ptmp, dtmp, i1a, i2a, xdat, mtmp):
         if yval.mean() == 0:
             continue
 
-        yhull = phull(yval)
+        yhull = phulljit(yval)
         crem = yval/yhull
         mtmp[j] = -(yval - yhull).min()
 
@@ -1080,7 +1080,7 @@ def fproc(fdat, ptmp, dtmp, i1a, i2a, xdat, mtmp):
     return ptmp, dtmp, mtmp
 
 
-@jit(nopython=True)
+@njit
 def cubic_calc(xdat, crem, imin):
     """
     Find minimum of function using an analytic cubic calculation for speed.
@@ -1161,48 +1161,50 @@ def cubic_calc(xdat, crem, imin):
     return x, y
 
 
-# @jit(nopython=True)
-# def phull(sample1):
-#     """
-#     Hull Calculation.
+@njit
+def phulljit(sample1):
+    """
+    Hull Calculation.
 
-#     Parameters
-#     ----------
-#     sample1 : numpy array
-#         Sample to create a hull for.
+    This is only here to be called from ther jit routines
 
-#     Returns
-#     -------
-#     out : numpy array
-#         Output hull.
+    Parameters
+    ----------
+    sample1 : numpy array
+        Sample to create a hull for.
 
-#     """
-#     xvals = np.arange(sample1.size, dtype=np.int64)
-#     sample = np.empty((sample1.size, 2))
-#     sample[:, 0] = xvals
-#     sample[:, 1] = sample1
+    Returns
+    -------
+    out : numpy array
+        Output hull.
 
-#     edge = sample[:1].copy()
-#     rest = sample[1:]
+    """
+    xvals = np.arange(sample1.size, dtype=np.int64)
+    sample = np.empty((sample1.size, 2))
+    sample[:, 0] = xvals
+    sample[:, 1] = sample1
 
-#     hull = [0]
-#     while len(rest) > 0:
-#         grad = rest - edge
-#         grad = grad[:, 1]/grad[:, 0]
-#         pivot = np.argmax(grad)
-#         edge[0, 0] = rest[pivot, 0]
-#         edge[0, 1] = rest[pivot, 1]
-#         rest = rest[pivot+1:]
-#         hull.append(pivot)
+    edge = sample[:1].copy()
+    rest = sample[1:]
 
-#     hull = np.array(hull) + 1
-#     hull = hull.cumsum()-1
+    hull = [0]
+    while len(rest) > 0:
+        grad = rest - edge
+        grad = grad[:, 1]/grad[:, 0]
+        pivot = np.argmax(grad)
+        edge[0, 0] = rest[pivot, 0]
+        edge[0, 1] = rest[pivot, 1]
+        rest = rest[pivot+1:]
+        hull.append(pivot)
 
-#     take = np.take(sample[:, 1], hull)
+    hull = np.array(hull) + 1
+    hull = hull.cumsum()-1
 
-#     out = np.interp(xvals, hull, take)
+    take = np.take(sample[:, 1], hull)
 
-#     return out
+    out = np.interp(xvals, hull, take)
+
+    return out
 
 
 def phull(y):
@@ -1235,6 +1237,7 @@ def phull(y):
     out = continuum_function(x)
 
     return out
+
 
 def readsli(ifile):
     """
@@ -1339,6 +1342,10 @@ def _testfn():
 
     data = get_data(ifile)
 
+    # y = np.array([i.data[200,300] for i in data])
+    # y1 = phull(y)
+    # y2 = phulljit(y)
+
     tmp = ProcFeatures(None)
     tmp.indata['Raster'] = data
     tmp.settings()
@@ -1348,7 +1355,7 @@ def _testfn():
     for dat in datall:
         plt.figure(dpi=150)
         plt.title(dat.dataid)
-        plt.imshow(dat.data, extent=dat.extent)
+        plt.imshow(dat.data, extent=dat.extent, interpolation='none')
         plt.colorbar()
         plt.tight_layout()
         plt.show()
@@ -1369,4 +1376,4 @@ def _testfn2():
 
 
 if __name__ == "__main__":
-    _testfn2()
+    _testfn()

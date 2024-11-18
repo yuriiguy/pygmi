@@ -2645,6 +2645,7 @@ def get_sentinel2(ifile, *, piter=None, showlog=print, tnames=None,
 
                 if 'WAVELENGTH' in bmeta and plvl == 'Level-2A':
                     dat[-1].data = dat[-1].data.astype(np.float32)
+                    nval = np.float32(nval)
                     dat[-1].data = dat[-1].data / 10000.
 
             dat[-1].dataid = bname

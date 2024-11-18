@@ -277,8 +277,10 @@ def histcomp(img, nbr_bins=None, perc=5., uperc=None):
 
     svalue, evalue = np.percentile(img.compressed(), (perc, 100-uperc))
 
-    img2 = np.empty_like(img, dtype=np.float32)
-    np.copyto(img2, img)
+    # img2 = np.empty_like(img, dtype=np.float32)
+    # np.copyto(img2, img)
+
+    img2 = img.copy()
 
     filt = np.ma.less(img2, svalue)
     img2[filt] = svalue
@@ -505,6 +507,10 @@ def lstack(dat, *, piter=None, dxy=None, showlog=print, commonmask=False,
                                  dst_transform=trans,
                                  dst_crs=data.crs,
                                  resampling=resampling)
+
+            if odata.shape != (rows, cols):
+                print('!!!!!!!!Error!!!!!!!!!')
+                breakpoint()
 
             data2 = Data()
             data2.data = np.ma.masked_equal(odata, data.nodata)

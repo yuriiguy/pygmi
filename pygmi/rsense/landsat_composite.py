@@ -307,6 +307,7 @@ def import_and_score(ifile, dreq, mean, std, *, showlog=print, piter=None):
     for i in tmp:
         if i.dataid in bands:
             i.data = i.data.astype(np.float32)
+            i.nodata = np.float32(i.nodata)
             dat[i.dataid] = i
         if 'ST_CDIST' in i.dataid:
             dat['cdist'] = i

@@ -257,7 +257,10 @@ class Data():
         """
         Make a deepcopy of the function.
 
-        This routine will clear metadata during copy.
+        Parameters
+        ----------
+        resetmeta : bool, optional
+            This will clear metadata during copy. The default is False.
 
         Returns
         -------
@@ -308,8 +311,8 @@ class Data():
         ----------
         dataset : rasterio dataset
             Rasterio dataset.
-        bounds : tuple
-            Bounds of data as (left, bottom, right, top)
+        bounds : tuple, optional
+            Bounds of data as (left, bottom, right, top). The default is None.
 
         Returns
         -------
@@ -330,6 +333,33 @@ class Data():
 
         self.extent = (left, right, bottom, top)
         self.bounds = (left, bottom, right, top)
+
+    def modify_mask(self, mask, oper='or'):
+        """
+        Modify the existing mask with a new one.
+
+        The routine also fills the masked areas with nodata.
+
+        Parameters
+        ----------
+        mask : array
+            Boolean array of new mak to modify old one.
+        oper : str, optional
+            Logical operation to be performed between masks. Can be 'or' or
+            'and'. The default is 'or'.
+
+        Returns
+        -------
+        None.
+
+        """
+        if oper == 'or':
+            self.data.mask = np.logical_or(self.data.mask, mask)
+        else:
+            self.data.mask = np.logical_and(self.data.mask, mask)
+
+        self.data = self.data.filled(self.nodata)
+        self.data = np.ma.masked_equal(self.data, self.nodata)
 
     def set_transform(self, xdim=None, xmin=None, ydim=None, ymax=None,
                       transform=None, iraster=None, rows=None, cols=None):

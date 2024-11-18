@@ -539,7 +539,7 @@ def sunshade(data, *, azim=-np.pi/4., elev=np.pi/4., alpha=1, cell=100,
 
     sunshader = currentshader(data, cell, elev, azim, alpha)
     snorm = norm2(sunshader)
-    pnorm, _, _ = np.uint8(norm2(histcomp(data))*255)
+    pnorm = np.uint8(norm2(histcomp(data)[0])*255)
 
     colormap = cmap(pnorm)
     colormap[:, :, 0] = colormap[:, :, 0]*snorm

@@ -684,6 +684,7 @@ class ConditionIndices(BasicModule):
 
         for i in datfin:
             i.data = i.data.astype(np.float32)
+            i.nodata = np.float32(i.nodata)
 
         if datfin:
             self.outdata['Raster'] = datfin
@@ -877,7 +878,7 @@ def calc_ratios(dat, rlist, showlog=print, piter=iter, sensor=None):
             ratio = ne.evaluate(formula, datd)
 
         ratio = ratio.astype(np.float32)
-        ratio[newmask] = dat[0].nodata
+        ratio[newmask] = np.float32(dat[0].nodata)
         ratio = np.ma.array(ratio, mask=newmask,
                             fill_value=dat[0].nodata)
 

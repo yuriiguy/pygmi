@@ -345,8 +345,6 @@ class DataLayerStack(BasicModule):
 
         """
         if 'RasterFileList' in self.indata:
-            # from pygmi.rsense.iodefs import get_data
-
             ifiles = self.indata['RasterFileList']
             self.showlog('Warning: Layer stacking a file list assumes '
                          'all datasets overlap in the same area')
@@ -355,8 +353,9 @@ class DataLayerStack(BasicModule):
                 self.showlog('Processing '+os.path.basename(ifile))
                 dat = get_data(ifile, piter=self.piter,
                                showlog=self.showlog)
-                for i in dat:
-                    i.data = i.data.astype(np.float32)
+                # for i in dat:
+                #     i.data = i.data.astype(np.float32)
+                #     i.nodata = np.float32(i.nodata)
                 self.indata['Raster'] += dat
 
         if 'Raster' not in self.indata:

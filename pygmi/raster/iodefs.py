@@ -1047,7 +1047,7 @@ def get_geosoft(hfile):
 
         elif es == 4:
             data = np.fromfile(f, dtype=np.float32, count=nrows*ncols)
-            nval = -1.0E+32
+            nval = np.float32(-1.0E+32)
 
         # elif es > 1024:
         #     esb = es-1024
