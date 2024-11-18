@@ -490,7 +490,7 @@ def lstack(dat, *, piter=None, dxy=None, showlog=print, commonmask=False,
         data.data = np.ma.array(data.data.filled(), mask=data.data.mask)
 
         trans0 = data.transform
-        if trans0 == trans:
+        if trans0 == trans and data.data.shape == (rows, cols):
             dat2.append(data.copy())
         else:
             if data.data.min() <= 0:
@@ -507,10 +507,6 @@ def lstack(dat, *, piter=None, dxy=None, showlog=print, commonmask=False,
                                  dst_transform=trans,
                                  dst_crs=data.crs,
                                  resampling=resampling)
-
-            if odata.shape != (rows, cols):
-                print('!!!!!!!!Error!!!!!!!!!')
-                breakpoint()
 
             data2 = Data()
             data2.data = np.ma.masked_equal(odata, data.nodata)
@@ -539,7 +535,11 @@ def lstack(dat, *, piter=None, dxy=None, showlog=print, commonmask=False,
         if cmask is None:
             cmask = dat2[-1].data.mask
         else:
-            cmask = np.logical_or(cmask, dat2[-1].data.mask)
+            try:
+                cmask = np.logical_or(cmask, dat2[-1].data.mask)
+            except:
+                print('!!!!!!!!Error!!!!!!!!!')
+                breakpoint()
 
     if commonmask is True:
         for idat in piter(dat2):
@@ -611,7 +611,7 @@ def _testfn():
     """Test."""
     from pygmi.raster.iodefs import get_raster
 
-    ifile1 = r"D:\Landslides\JTNdem.tif"
+    ifile1 = r"D:\Landslides\old\JTNdem.tif"
     ifile2 = r"D:\Landslides\GeoTiff\S2B_T36JTN_R092_20220428_stack.tif"
 
     dat1 = get_raster(ifile1)

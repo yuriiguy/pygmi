@@ -2889,8 +2889,7 @@ def get_aster_zip(ifile, piter=None, showlog=print, tnames=None,
     for zfile in piter(zipnames):
         if zfile.lower()[-4:] != '.tif':
             continue
-
-        gmeta = get_aster_metadata(zfile)
+        gmeta = get_aster_metadata(os.path.join(idir, zfile))
 
         # bname = zfile[zfile.index('Band'):zfile.index('.tif')]
         bname = zfile.split('.')[-2]
@@ -3722,7 +3721,7 @@ def _testfn3():
     """Test routine."""
     import matplotlib.pyplot as plt
 
-    ifile = r"D:\Workdata\PyGMI Test Data\Remote Sensing\Import\ASTER\AST_07XT_00304132006083806_20180608052446_30254.hdf"
+    # ifile = r"D:\Workdata\PyGMI Test Data\Remote Sensing\Import\ASTER\AST_07XT_00304132006083806_20180608052446_30254.hdf"
     # ifile = r"D:\workdata\PyGMI Test Data\Remote Sensing\Import\MODIS\MOD16A2.A2013073.h20v11.006.2017101224330.hdf"
     # ifile = r"D:\dem\L1C\S2B_MSIL2A_20220329T073609_N9999_R092_T36JTM_20241009T082013.SAFE\MTD_MSIL2A.xml"
     # ifile = r"D:\dem\L1C\S2B_MSIL2A_20220329T073609_N9999_R092_T36JTM_20241009T082013.SAFE.zip"
@@ -3731,11 +3730,12 @@ def _testfn3():
     # ifile = r"D:\workdata\PyGMI Test Data\Remote Sensing\Import\Landsat\LC081740432017101901T1-SC20180409064853.tar.gz"
     # ifile = r"D:\workdata\PyGMI Test Data\Remote Sensing\Import\wv2\014568829030_01_P001_MUL\16MAY28083210-M3DS-014568829030_01_P001.XML"
 
+    ifile = r"D:\AST_05_00303212023211451_20241118053911_2383184.zip"
     # meta = get_sentinel2_metadata(ifile)
 
     app = QtWidgets.QApplication(sys.argv)
 
-    os.chdir(os.path.dirname(ifile))
+    # os.chdir(os.path.dirname(ifile))
     # tmp1 = ImportBatch()
     tmp1 = ImportData()
     tmp1.settings()
