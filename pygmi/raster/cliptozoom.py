@@ -216,8 +216,11 @@ def _testfn():
     app = QtWidgets.QApplication(sys.argv)
 
     ifile = r"D:\workdata\PyGMI Test Data\Raster\testdata.hdr"
+    ifile = r"D:\Landslides\dem.tif"
 
     data = get_raster(ifile)
+
+    # breakpoint()
 
     tmp = ClipToZoom()
     tmp.indata['Raster'] = data

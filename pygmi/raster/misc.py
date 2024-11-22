@@ -201,7 +201,7 @@ def cut_raster(data, ibnd, showlog=print, deepcopy=True):
                     'the shapefile.')
             return None
 
-    gdf = gdf.to_crs(data[0].crs)
+    gdf = gdf.set_crs(data[0].crs)
     gdf = gdf[gdf.geometry != None]
 
     if 'Polygon' not in gdf.geom_type.iloc[0]:

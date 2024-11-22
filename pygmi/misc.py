@@ -30,11 +30,13 @@ import types
 import time
 import textwrap
 import psutil
-import win32api
-import win32job
 import numpy as np
 from matplotlib import ticker, cm, colors
 from PyQt5 import QtWidgets, QtCore, QtGui
+
+if os.name == 'nt':
+    import win32api
+    import win32job
 
 PBAR_STYLE = """
 QProgressBar{
