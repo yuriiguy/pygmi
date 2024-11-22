@@ -240,7 +240,9 @@ def calc_change(flist, ilist=None, showlog=print, piter=iter):
     std = None
     datfin = []
 
-    meandat, cnt, M = calc_mean(flist, showlog, piter)
+    if ('Standard Deviation' in ilist or 'Coefficient of Variation' in ilist or
+            'Mean' in ilist):
+        meandat, cnt, M = calc_mean(flist, showlog, piter)
 
     if 'Standard Deviation' in ilist:
         showlog('Calculating STD...')
@@ -334,8 +336,6 @@ def calc_mean(flist, showlog=print, piter=iter):
     M = {}
 
     for i in meandat:
-        cnt[i] = None
-        M[i] = None
         cnt[i] = meandat[i].copy()
         M[i] = meandat[i].copy()
         cnt[i].data = np.ones_like(cnt[i].data)
@@ -350,7 +350,7 @@ def calc_mean(flist, showlog=print, piter=iter):
 
         for i in meandat:
             if i not in dat:
-                showlog(f'{i} not in first dataset, skipping.')
+                showlog(f'{i} not in new dataset, skipping.')
                 continue
 
             ltmp = [meandat[i], dat[i], cnt[i], M[i]]
@@ -503,6 +503,8 @@ def match_data(flist, showlog=print, piter=iter):
     """
     Match two datasets.
 
+    This routine also puts the datasets in order of date.
+
     Parameters
     ----------
     flist : list of RasterMeta or Data lists
@@ -642,7 +644,7 @@ def _testfn():
     from pygmi.rsense.iodefs import ImportBatch
 
     idir = r'E:\WorkProjects\ST-2020-1339 Landslides\change\ratios'
-    idir = r'E:\WorkProjects\ST-2020-1339 Landslides\change\mosaic\ratios'
+    idir = r'E:\WorkProjects\ST-2020-1339 Landslides\2024\Q2\change\mosaic\ratios'
     os.chdir(r'E:\\')
 
     app = QtWidgets.QApplication(sys.argv)

@@ -129,7 +129,7 @@ class MyMplCanvas(FigureCanvasQTAgg):
         self.axes = self.figure.add_subplot(111)
 
         rdata = imshow(self.axes, data1.data, extent=data1.extent,
-                       cmap=colormaps[cmap], interpolation='nearest')
+                       cmap=colormaps[cmap], interpolation='none')
 
         if not data1.isrgb:
             rdata.set_clim_std(2.5)

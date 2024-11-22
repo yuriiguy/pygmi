@@ -1478,7 +1478,11 @@ def get_data(ifile, *, piter=None, showlog=print, tnames=None, metaonly=False,
     bfile = os.path.basename(ifile)
     ext = os.path.splitext(ifile)[1].lower()
 
-    showlog('Importing', bfile)
+    if (ext == '.xml' and '.SAFE' in ifile):
+        tmp = os.path.basename(os.path.dirname(ifile))
+        showlog('Importing '+tmp)
+    else:
+        showlog('Importing '+bfile)
     dtree = {}
     if '.xml' in bfile.lower():
         dtree = etree_to_dict(ET.parse(ifile).getroot())

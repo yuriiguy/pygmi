@@ -379,9 +379,9 @@ def c_correction(data, dem, azimuth, zenith, *, showlog=print, piter=iter):
     dem : PyGMI Data type
         DEM data used in correction.
     azimuth : float
-        Solar azimuth.
+        Solar azimuth in degrees.
     zenith : float
-        Solar zenith.
+        Solar zenith in degrees.
     showlog : function, optional
         Display information. The default is print.
     piter : function, optional
@@ -393,6 +393,7 @@ def c_correction(data, dem, azimuth, zenith, *, showlog=print, piter=iter):
         List of c-corrected data arrays.
 
     """
+    showlog('Calculating topographic c-correction...')
     adeg, _, _ = aspect2(dem.data)
 
     px, py = np.gradient(dem.data, dem.xdim)
@@ -404,11 +405,12 @@ def c_correction(data, dem, azimuth, zenith, *, showlog=print, piter=iter):
     a = np.deg2rad(azimuth)
     ap = np.deg2rad(adeg)
     s = np.deg2rad(slope_deg)
-    sz = Z
+
+    del px, py, slope, slope_deg, adeg
 
     cosi = np.cos(Z)*np.cos(s)+np.sin(Z)*np.sin(s)*np.cos(a-ap)
 
-    cossz = np.cos(sz)
+    cossz = np.cos(Z)
 
     # C
     data2 = []
