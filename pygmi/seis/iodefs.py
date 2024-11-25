@@ -599,6 +599,8 @@ def importseiscomp(ifile, showlog=print, prefmag='MLv'):
         tmp.hypocenter_reporting_agency = origin['Agency']
         if 'Residual RMS' in origin:
             tmp.rms_of_time_residuals = str2float(origin['Residual RMS'].split()[0])
+        else:
+            tmp.rms_of_time_residuals = np.nan
 
         netmag1 = netmag[prefmag].split()
         tmp.number_of_stations_used = str2int(netmag1[3])

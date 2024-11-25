@@ -266,6 +266,7 @@ class MyMplCanvas(FigureCanvasQTAgg):
 
         dattmp = np.array(data1)
         dattmp = dattmp[~np.isnan(dattmp)]
+
         if dattmp.size == 0:
             self.figure.canvas.draw()
             return
@@ -1259,7 +1260,7 @@ def _testfn():
     app = QtWidgets.QApplication(sys.argv)
     tmp = ImportSeisan()
     tmp.ifile = r"D:\Workdata\PyGMI Test Data\Seismology\collect1.out"
-    # tmp.ifile = r"E:\Workdata\seismology\seiscomp\events.txt"
+    tmp.ifile = r"D:\seis\events.txt"
 
     tmp.settings(True)
 
