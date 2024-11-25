@@ -474,6 +474,13 @@ def importseiscomp(ifile, showlog=print, prefmag='MLv'):
         if eventrec == '':
             continue
 
+        # origin['Time'] = '00:00:00.000'
+        # origin['Latitude'] = ''
+        # origin['Longitude'] = ''
+        # origin['Depth'] = ''
+        # origin['Agency'] = ''
+        # origin['Residual RMS'] = ''
+
         elines = eventrec.splitlines()
         currentsection = 'Event'
 
@@ -534,7 +541,8 @@ def importseiscomp(ifile, showlog=print, prefmag='MLv'):
                 phase.append(tmp)
 
         if prefmag not in netmag:
-            showlog(f'Skipping event {event["Preferred Origin ID"]}, {prefmag} not available.')
+            showlog(f'Skipping event {event["Preferred Origin ID"]}, '
+                    f'{prefmag} not available.')
             continue
 
         # Select preferred magnitude
@@ -589,7 +597,8 @@ def importseiscomp(ifile, showlog=print, prefmag='MLv'):
         tmp.longitude = str2float(origin['Longitude'].split()[0])
         tmp.depth = str2float(origin['Depth'].split()[0])
         tmp.hypocenter_reporting_agency = origin['Agency']
-        tmp.rms_of_time_residuals =  str2float(origin['Residual RMS'].split()[0])
+        if 'Residual RMS' in origin:
+            tmp.rms_of_time_residuals = str2float(origin['Residual RMS'].split()[0])
 
         netmag1 = netmag[prefmag].split()
         tmp.number_of_stations_used = str2int(netmag1[3])
@@ -3039,6 +3048,7 @@ def _testfn2():
     ifile = r"D:\workdata\seismology\seiscomp\events.txt"
     ifile = r"D:\workdata\PyGMI Test Data\Seismology\events.txt"
     ifile = r"D:\May2024.txt"
+    ifile = r"D:\seis\events.txt"
 
     data = importseiscomp(ifile)
 
