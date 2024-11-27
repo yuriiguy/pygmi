@@ -64,7 +64,7 @@ class TopoCorrect(BasicModule):
         """
         gl_main = QtWidgets.QGridLayout(self)
         buttonbox = QtWidgets.QDialogButtonBox()
-        helpdocs = menu_default.HelpButton('pygmi.rsense.change')
+        helpdocs = menu_default.HelpButton('pygmi.rsense.topo')
 
         lbl_dem = QtWidgets.QLabel('Digital Elevation Model:')
         lbl_azi = QtWidgets.QLabel('Solar Azimuth:')
@@ -217,7 +217,7 @@ class Sen2Cor(BasicModule):
         """
         gl_main = QtWidgets.QGridLayout(self)
         buttonbox = QtWidgets.QDialogButtonBox()
-        helpdocs = menu_default.HelpButton('pygmi.rsense.change')
+        helpdocs = menu_default.HelpButton('pygmi.rsense.sen2cor')
 
         pixmapi = QtWidgets.QStyle.SP_DialogOpenButton
         icon = self.style().standardIcon(pixmapi)
@@ -231,7 +231,7 @@ class Sen2Cor(BasicModule):
         buttonbox.setCenterButtons(True)
         buttonbox.setStandardButtons(buttonbox.Cancel | buttonbox.Ok)
 
-        self.setWindowTitle('Sen2Cor - Sentinel 2 Amospheric Correction')
+        self.setWindowTitle('Sen2Cor - Sentinel 2 Atmospheric Correction')
 
         gl_main.addWidget(self.pb_sen2cor, 1, 0, 1, 1)
         gl_main.addWidget(self.le_sen2cor, 1, 1, 1, 1)
@@ -453,6 +453,8 @@ def _testfn():
     """Test routine topo."""
     import matplotlib.pyplot as plt
     from pygmi.raster.misc import norm2
+    from pygmi.misc import frm
+
     # ifile1 = r"D:\Landslides\JTNdem.tif"
     # ifile2 = r"D:\Landslides\GeoTiff\S2B_T36JTN_R092_20220428_stack.tif"
     # ifile2 = r"D:\Landslides\test.tif"
@@ -482,6 +484,7 @@ def _testfn():
 
     for dat in [data, data2]:
         plt.figure(dpi=200)
+        ax = plt.gca()
 
         red = dat[3].data
         green = dat[2].data
@@ -498,6 +501,13 @@ def _testfn():
         img[:, :, 2] = norm2(blue, bmin, bmax)*255
 
         plt.imshow(img, extent=dat[0].extent)
+
+        ax.set_xlabel('Eastings')
+        ax.set_ylabel('Northings')
+
+        ax.xaxis.set_major_formatter(frm)
+        ax.yaxis.set_major_formatter(frm)
+
         plt.show()
 
 
