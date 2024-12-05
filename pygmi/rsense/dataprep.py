@@ -37,6 +37,10 @@ from pygmi.raster.misc import lstack, aspect2
 from pygmi.raster.iodefs import get_raster
 from pygmi import menu_default
 from pygmi.misc import BasicModule
+import matplotlib.pyplot as plt
+# import warnings
+
+# warnings.filterwarnings('error')
 
 
 class TopoCorrect(BasicModule):
@@ -397,16 +401,18 @@ def c_correction(data, dem, azimuth, zenith, *, showlog=print, piter=iter):
     adeg, _, _ = aspect2(dem.data)
 
     px, py = np.gradient(dem.data, dem.xdim)
-    slope = np.sqrt(px ** 2 + py ** 2)
 
-    slope_deg = np.degrees(np.arctan(slope))
+    slope = np.ma.sqrt(px ** 2 + py ** 2)
+    # slope_deg = np.degrees(np.ma.arctan(slope))
+    s = np.ma.arctan(slope)
 
     Z = np.deg2rad(zenith)
     a = np.deg2rad(azimuth)
     ap = np.deg2rad(adeg)
-    s = np.deg2rad(slope_deg)
+    # s = np.deg2rad(slope_deg)
 
-    del px, py, slope, slope_deg, adeg
+    # del px, py, slope, slope_deg, adeg
+    del px, py, slope, adeg
 
     cosi = np.cos(Z)*np.cos(s)+np.sin(Z)*np.sin(s)*np.cos(a-ap)
 
@@ -417,11 +423,24 @@ def c_correction(data, dem, azimuth, zenith, *, showlog=print, piter=iter):
     for Lt in piter(data):
         Lh = Lt.copy()
 
-        x = cosi.flatten()
-        y = Lt.data.flatten()
-        m, b = np.polyfit(x, y, 1)
+        mask = np.logical_or(cosi.mask, Lt.data.mask)
 
+        x = np.ma.masked_where(mask, cosi)
+        x = x.compressed()
+
+        y = np.ma.masked_where(mask, Lt.data)
+        y = y.compressed()
+
+        m, b = np.polyfit(x, y, 1)
         c = b/m
+
+        print(f'c: {c}')
+        plt.figure(dpi=200)
+        plt.plot(x, y, '.')
+        trendpoly = np.poly1d((m, b))
+        plt.plot(x, trendpoly(x))
+        plt.title(c)
+        plt.show()
 
         Lh.data = Lt.data*(cossz+c)/(cosi+c)
         data2.append(Lh)
@@ -511,6 +530,100 @@ def _testfn():
         plt.show()
 
 
+def _testfn3():
+    """Test routine topo."""
+    import matplotlib.pyplot as plt
+    from pygmi.raster.misc import norm2
+    from pygmi.misc import frm
+    from pygmi.raster.dataprep import mosaic
+    from pygmi.rsense.iodefs import get_data
+    from pygmi.raster.iodefs import export_raster
+    from pygmi.raster.reproj import data_reproject
+
+    ddir = r'D:\Landslides\DEM'
+    sdir = r"D:\Landslides\L2A"
+    # bfile = r"D:\Lanslides\L2A\S2B_MSIL2A_20220329T073609_N9999_R092_T36JTM_20241028T132304.SAFE"
+
+
+    ifiles = glob.glob(sdir+'/S2B_MSIL2A*')
+
+    icnt = 0
+    for bfile in ifiles:
+        print(icnt)
+        bname = os.path.basename(bfile)
+        print(bname)
+        tmp = {}
+        dem = mosaic(tmp, idir=ddir, bfile=bfile, res=10)[0]
+
+        plt.figure(dpi=200)
+        plt.imshow(dem.data)
+        plt.show()
+
+        data = get_data(bfile)
+
+        dat2 = []
+        for i in data:
+            if 'central' in i.dataid:
+                dat2.append(i)
+        data = dat2
+        del dat2
+
+        ofile = f'D:/Landslides/test/{bname}.tif'
+        export_raster(ofile, data, compression='DEFLATE')
+
+        azimuth = None
+        zenith = None
+
+        for i in data:
+            rmeta = i.metadata['Raster']
+            if 'DEM' in rmeta:
+                azimuth = rmeta['Solar Azimuth']
+                zenith = rmeta['Solar Zenith']
+
+        zenith = float(zenith)
+        azimuth = float(azimuth)
+        dem = data_reproject(dem, data[0].crs)
+
+        data = lstack(data, commonmask=True)
+        dem1 = lstack(data+[dem], masterid=data[0].dataid, commonmask=True)
+        dem2 = dem1.pop(-1)
+
+        data2 = c_correction(data, dem2, azimuth, zenith)
+
+        ofile = f'D:/Landslides/test/{bname}_tc.tif'
+        export_raster(ofile, data2, compression='DEFLATE')
+
+        for dat in [data, data2]:
+            plt.figure(dpi=200)
+            plt.title(os.path.basename(bfile))
+            ax = plt.gca()
+
+            red = dat[3].data
+            green = dat[2].data
+            blue = dat[1].data
+
+            rmin, rmax = .1, .2
+            gmin, gmax = .1, .2
+            bmin, bmax = .1, .2
+
+            img = np.zeros((red.shape[0], red.shape[1], 3), dtype=np.uint8)
+
+            img[:, :, 0] = norm2(red, rmin, rmax)*255
+            img[:, :, 1] = norm2(green, gmin, gmax)*255
+            img[:, :, 2] = norm2(blue, bmin, bmax)*255
+
+            plt.imshow(img, extent=dat[0].extent, interpolation='none')
+
+            ax.set_xlabel('Eastings')
+            ax.set_ylabel('Northings')
+
+            ax.xaxis.set_major_formatter(frm)
+            ax.yaxis.set_major_formatter(frm)
+
+            plt.show()
+
+
+
 
 if __name__ == "__main__":
-    _testfn()
+    _testfn3()

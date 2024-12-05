@@ -201,7 +201,10 @@ def cut_raster(data, ibnd, showlog=print, deepcopy=True):
                     'the shapefile.')
             return None
 
-    gdf = gdf.set_crs(data[0].crs)
+    if gdf.crs is None:
+        gdf = gdf.set_crs(data[0].crs)
+    else:
+        gdf = gdf.to_crs(data[0].crs)
     gdf = gdf[gdf.geometry != None]
 
     if 'Polygon' not in gdf.geom_type.iloc[0]:
@@ -535,11 +538,7 @@ def lstack(dat, *, piter=None, dxy=None, showlog=print, commonmask=False,
         if cmask is None:
             cmask = dat2[-1].data.mask
         else:
-            try:
-                cmask = np.logical_or(cmask, dat2[-1].data.mask)
-            except:
-                print('!!!!!!!!Error!!!!!!!!!')
-                breakpoint()
+            cmask = np.logical_or(cmask, dat2[-1].data.mask)
 
     if commonmask is True:
         for idat in piter(dat2):
