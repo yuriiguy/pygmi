@@ -434,15 +434,17 @@ def c_correction(data, dem, azimuth, zenith, *, showlog=print, piter=iter):
         m, b = np.polyfit(x, y, 1)
         c = b/m
 
-        print(f'c: {c}')
-        plt.figure(dpi=200)
-        plt.plot(x, y, '.')
-        trendpoly = np.poly1d((m, b))
-        plt.plot(x, trendpoly(x))
-        plt.title(c)
-        plt.show()
+        print(f'zenith:{zenith} azimuth:{azimuth} c:{c}')
+        # plt.figure(dpi=200)
+        # plt.plot(x, y, '.')
+        # trendpoly = np.poly1d((m, b))
+        # plt.plot(x, trendpoly(x))
+        # plt.title(c)
+        # plt.show()
 
         Lh.data = Lt.data*(cossz+c)/(cosi+c)
+        Lh.set_mask(mask)
+
         data2.append(Lh)
 
     return data2
@@ -529,12 +531,27 @@ def _testfn():
 
         plt.show()
 
+    for i, _ in enumerate(data):
+
+        dat = data[i]
+        dat2 = data2[i]
+
+        plt.figure(dpi=200)
+        ax = plt.subplot(121)
+
+        vmin, vmax = dat.get_vmin_vmax()
+        plt.imshow(dat.data, vmin=vmin, vmax=vmax)
+
+        ax = plt.subplot(122)
+
+        vmin, vmax = dat2.get_vmin_vmax()
+        plt.imshow(dat2.data, vmin=vmin, vmax=vmax)
+
+        plt.show()
+
 
 def _testfn3():
     """Test routine topo."""
-    import matplotlib.pyplot as plt
-    from pygmi.raster.misc import norm2
-    from pygmi.misc import frm
     from pygmi.raster.dataprep import mosaic
     from pygmi.rsense.iodefs import get_data
     from pygmi.raster.iodefs import export_raster
@@ -542,8 +559,6 @@ def _testfn3():
 
     ddir = r'D:\Landslides\DEM'
     sdir = r"D:\Landslides\L2A"
-    # bfile = r"D:\Lanslides\L2A\S2B_MSIL2A_20220329T073609_N9999_R092_T36JTM_20241028T132304.SAFE"
-
 
     ifiles = glob.glob(sdir+'/S2B_MSIL2A*')
 
@@ -555,15 +570,12 @@ def _testfn3():
         tmp = {}
         dem = mosaic(tmp, idir=ddir, bfile=bfile, res=10)[0]
 
-        plt.figure(dpi=200)
-        plt.imshow(dem.data)
-        plt.show()
-
         data = get_data(bfile)
 
         dat2 = []
         for i in data:
             if 'central' in i.dataid:
+                i.data = i.data.astype(np.float32)
                 dat2.append(i)
         data = dat2
         del dat2
@@ -585,44 +597,18 @@ def _testfn3():
         dem = data_reproject(dem, data[0].crs)
 
         data = lstack(data, commonmask=True)
-        dem1 = lstack(data+[dem], masterid=data[0].dataid, commonmask=True)
-        dem2 = dem1.pop(-1)
+        data = lstack(data+[dem], masterid=data[0].dataid, commonmask=True)
 
-        data2 = c_correction(data, dem2, azimuth, zenith)
+        for i in data:
+            i.data = i.data.astype(np.float32)
+        dem = data.pop(-1)
+
+        data = c_correction(data, dem, azimuth, zenith)
 
         ofile = f'D:/Landslides/test/{bname}_tc.tif'
-        export_raster(ofile, data2, compression='DEFLATE')
+        export_raster(ofile, data, compression='DEFLATE')
 
-        for dat in [data, data2]:
-            plt.figure(dpi=200)
-            plt.title(os.path.basename(bfile))
-            ax = plt.gca()
-
-            red = dat[3].data
-            green = dat[2].data
-            blue = dat[1].data
-
-            rmin, rmax = .1, .2
-            gmin, gmax = .1, .2
-            bmin, bmax = .1, .2
-
-            img = np.zeros((red.shape[0], red.shape[1], 3), dtype=np.uint8)
-
-            img[:, :, 0] = norm2(red, rmin, rmax)*255
-            img[:, :, 1] = norm2(green, gmin, gmax)*255
-            img[:, :, 2] = norm2(blue, bmin, bmax)*255
-
-            plt.imshow(img, extent=dat[0].extent, interpolation='none')
-
-            ax.set_xlabel('Eastings')
-            ax.set_ylabel('Northings')
-
-            ax.xaxis.set_major_formatter(frm)
-            ax.yaxis.set_major_formatter(frm)
-
-            plt.show()
-
-
+        del data, dem
 
 
 if __name__ == "__main__":

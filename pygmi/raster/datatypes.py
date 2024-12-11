@@ -361,6 +361,27 @@ class Data():
         self.data = self.data.filled(self.nodata)
         self.data = np.ma.masked_equal(self.data, self.nodata)
 
+    def set_mask(self, mask):
+        """
+        Replace the existing mask with a new one.
+
+        The routine also fills the masked areas with nodata.
+
+        Parameters
+        ----------
+        mask : array
+            Boolean array of new mak to modify old one.
+
+        Returns
+        -------
+        None.
+
+        """
+        self.data.mask = mask
+
+        self.data = self.data.filled(self.nodata)
+        self.data = np.ma.masked_equal(self.data, self.nodata)
+
     def set_transform(self, xdim=None, xmin=None, ydim=None, ymax=None,
                       transform=None, iraster=None, rows=None, cols=None):
         """
