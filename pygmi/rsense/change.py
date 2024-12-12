@@ -290,13 +290,13 @@ def calc_change(flist, ilist=None, showlog=print, piter=iter):
         showlog('Calculating difference...')
 
         dat1, dat2 = match_data(flist, showlog=showlog, piter=piter)
+        if dat1 is not None:
+            diff = [i.copy() for i in dat1]
 
-        diff = [i.copy() for i in dat1]
-
-        for i, dband in enumerate(diff):
-            dband.data = dat2[i].data-dat1[i].data
-            dband.dataid += '_DIFF'
-        datfin += diff
+            for i, dband in enumerate(diff):
+                dband.data = dat2[i].data-dat1[i].data
+                dband.dataid += '_DIFF'
+            datfin += diff
 
     return datfin
 
@@ -390,6 +390,8 @@ def calc_sam(flist, showlog=print, piter=iter):
     showlog('Calculating SAM...')
 
     dat1, dat2 = match_data(flist, showlog=showlog, piter=piter)
+    if dat1 is None:
+        return []
 
     dat1b = []
     for j in dat1:
@@ -532,6 +534,10 @@ def match_data(flist, showlog=print, piter=iter):
         tnames = list(set(tnames1).intersection(set(tnames2)))
     else:
         tnames = list(set(flist[0].tnames).intersection(set(flist[1].tnames)))
+
+    if not tnames:
+        showlog('Error: Could not find common band names.')
+        return None, None
 
     dat1 = get_from_rastermeta(flist[0], piter=piter, showlog=showlog,
                                tnames=tnames)
