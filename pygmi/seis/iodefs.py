@@ -1340,6 +1340,10 @@ class ExportSeisan(ContextModule):
         with open(filename, 'w', encoding='utf-8') as self.fobj:
             for i in self.piter(data):
                 self.write_record_type_1(i)
+                self.write_record_type_2(i)
+                self.write_record_type_3(i)
+                self.write_record_type_5(i)
+                self.write_record_type_6(i)
                 self.write_record_type_f(i)  # This is missing  some #3 recs
                 self.write_record_type_m(i)  # This is missing  some #3 recs
                 self.write_record_type_e(i)
@@ -1448,7 +1452,7 @@ class ExportSeisan(ContextModule):
 
         self.fobj.write(tmp)
 
-    def write_record_type_3(self, tmp):
+    def write_record_type_3(self, data):
         """
         Write record type 3.
 
@@ -1464,10 +1468,13 @@ class ExportSeisan(ContextModule):
         None.
 
         """
-        if '3' not in tmp:
+        if '3' not in data:
             return
 
+        dat = data['3']
+
         tmp = ' '*80+'\n'
+        tmp = sform('{0:78s}', dat.text[:78], tmp, 2, 79)
         tmp = sform('{0:1s}', '3', tmp, 80)
 
         self.fobj.write(tmp)

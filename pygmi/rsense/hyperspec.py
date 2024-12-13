@@ -41,7 +41,8 @@ from scipy.interpolate import interp1d
 
 from pygmi.misc import frm, BasicModule
 from pygmi import menu_default
-from pygmi.raster.iodefs import get_raster
+from pygmi.rsense.iodefs import get_from_rastermeta
+# from pygmi.raster.iodefs import get_raster
 from pygmi.raster.datatypes import numpy_to_pygmi
 from pygmi.raster.iodefs import export_raster
 from pygmi.rsense import features
@@ -775,13 +776,16 @@ class ProcFeatures(BasicModule):
 
         if 'RasterFileList' in self.indata:
             flist = self.indata['RasterFileList']
-            odir = os.path.join(os.path.dirname(flist[0]), 'feature')
+            odir = os.path.join(os.path.dirname(flist[0].filename), 'feature')
 
             os.makedirs(odir, exist_ok=True)
-            for ifile in flist:
+            for idat in flist:
+                ifile = idat.filename
                 self.showlog('Processing '+os.path.basename(ifile))
 
-                dat = get_raster(ifile)
+                dat = get_from_rastermeta(idat, showlog=self.showlog,
+                                          piter=self.piter)
+                self.showlog('Calculating features...')
                 datfin = calcfeatures(dat, mineral, self.feature, self.ratio,
                                       product, cryst=cryst,
                                       rfilt=rfilt, piter=self.piter)
@@ -1334,31 +1338,39 @@ def readsli(ifile):
 
 def _testfn():
     """Test routine."""
-    from pygmi.rsense.iodefs import get_data
+    from pygmi.rsense.iodefs import get_data, files_to_rastermeta
+    from pygmi.misc import getinfo
 
     app = QtWidgets.QApplication(sys.argv)
 
     ifile = r"D:\workdata\PyGMI Test Data\Remote Sensing\Import\hyperspectral\Cu-hyperspec-testarea.tif"
+    ifile = r"D:\Hyper\042_0816-1139_ref_rect.hdr"
 
-    data = get_data(ifile)
+
+    getinfo()
+    bands, tnames, data = files_to_rastermeta([ifile])
+
+    # data = get_data(ifile)
 
     # y = np.array([i.data[200,300] for i in data])
     # y1 = phull(y)
     # y2 = phulljit(y)
 
     tmp = ProcFeatures(None)
-    tmp.indata['Raster'] = data
+    # tmp.indata['Raster'] = data
+    tmp.indata['RasterFileList'] = data
     tmp.settings()
 
-    datall = tmp.outdata['Raster']
+    # datall = tmp.outdata['Raster']
+    getinfo()
 
-    for dat in datall:
-        plt.figure(dpi=150)
-        plt.title(dat.dataid)
-        plt.imshow(dat.data, extent=dat.extent, interpolation='none')
-        plt.colorbar()
-        plt.tight_layout()
-        plt.show()
+    # for dat in datall:
+    #     plt.figure(dpi=150)
+    #     plt.title(dat.dataid)
+    #     plt.imshow(dat.data, extent=dat.extent, interpolation='none')
+    #     plt.colorbar()
+    #     plt.tight_layout()
+    #     plt.show()
 
 
 def _testfn2():

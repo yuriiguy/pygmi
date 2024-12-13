@@ -1401,7 +1401,7 @@ def export_batch(indata, odir, filt, *, tnames=None, piter=None,
                           compression=compression, showlog=showlog)
 
 
-def files_to_rastermeta(allfiles, piter=None, showlog=print):
+def files_to_rastermeta(allfiles, piter=iter, showlog=print):
     """
     Import files to a RasterMeta item.
 
@@ -1410,7 +1410,7 @@ def files_to_rastermeta(allfiles, piter=None, showlog=print):
     allfiles : list
         List of filenames.
     piter : function, optional
-        Progress bar iterable. Default is None.
+        Progress bar iterable. Default is iter.
     showlog : function, optional
         Routine to show text messages. The default is print.
 
@@ -1582,10 +1582,11 @@ def get_from_rastermeta(ldata, *, piter=None, showlog=print, tnames=None,
             dat = ldata
         else:
             dat = [i for i in ldata if i.dataid in tnames]
-        dat = cut_raster(dat, bounds)
+        if bounds is not None:
+            dat = cut_raster(dat, bounds)
     else:
-        if tnames is None:
-            tnames = ldata.tnames
+        # if tnames is None:
+        #     tnames = ldata.tnames
         ifile = ldata.banddata[0].filename
         dat = get_data(ifile, piter=piter, showlog=showlog, tnames=tnames,
                        metaonly=metaonly, bounds=bounds)
